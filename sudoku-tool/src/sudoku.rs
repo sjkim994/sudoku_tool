@@ -86,7 +86,7 @@ impl Sudoku {
             }
         }
     }
-     // Check if a cell is solved and, if so, get the solved value of a cell
+    // Check if a cell is solved and, if so, get the solved value of a cell
     pub fn get_solved_value(&self, row: usize, col: usize) -> Option<u8> {
         let set = self.grid.get(row, col).unwrap();
         if set.len() == 1 {
@@ -95,7 +95,7 @@ impl Sudoku {
             None
         }
     }
-        // Remove a possibility from a cell
+    // Remove a possibility from a cell
     pub fn remove_possibility(&mut self, row: usize, col: usize, value: u8) -> bool {
         if let Some(set) = self.grid.get_mut(row, col) {
             // Only remove from unsolved cells

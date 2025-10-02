@@ -1,7 +1,7 @@
 mod sudoku;
 use sudoku::Sudoku;
 
-mod solver;
+mod bf_solver;
 
 fn main() {
     // Test with an empty board

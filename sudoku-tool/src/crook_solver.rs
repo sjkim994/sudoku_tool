@@ -1,8 +1,3 @@
-use array2d::Array2D;
-use std::collections::BTreeSet;
-
-use crate::sudoku::Sudoku;
-
 /*
 
 Algorithm steps:
