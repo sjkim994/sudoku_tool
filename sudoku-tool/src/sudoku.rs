@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::fmt;
 
 use array2d::Array2D;
 
@@ -183,5 +184,32 @@ impl Sudoku {
 
         // Check if all numbers 1-9 are present
         seen[1..=9].iter().all(|&present| present)
+    }
+}
+
+impl fmt::Display for Sudoku {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, row) in self.grid.rows_iter().enumerate() {
+            // Add horizontal separators every 3 rows
+            if i % 3 == 0 && i != 0 {
+                writeln!(f, "------+-------+------")?;
+            }
+            
+            for (j, cell) in row.enumerate() {
+                // Add vertical separators every 3 columns
+                if j % 3 == 0 && j != 0 {
+                    write!(f, "| ")?;
+                }
+                
+                // Print cell value or '_' for empty
+                if let Some(value) = self.get_solved_value(i, j) {
+                    write!(f, "{} ", value)?;
+                } else {
+                    write!(f, "_ ")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }

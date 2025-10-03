@@ -11,7 +11,7 @@ pub struct SolverStats {
 }
 
 // Finds a solution to a Sudoku puzzle
-pub fn find_one_solution(sudoku: &mut Sudoku) -> (Option<Sudoku>, SolverStats) {
+pub fn find_one_solution(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
     // Initialize stat recorders
     let start_time = Instant::now();
     let mut stats = SolverStats::default();
@@ -121,19 +121,20 @@ fn solve_recursive(
             j = 0;
             i += 1;
         }
-        if i == 9 {
-            let mut solution_sudoku = Sudoku::new();
+    }
 
-            // Copy solution to Sudoku struct
-            for row in 0..9 {
-                for col in 0..9 {
-                    solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
-                }
+    // Check if board is filled
+    if i == 9 {
+        let mut solution_sudoku = Sudoku::new();
+        // Copy solution to Sudoku struct
+        for row in 0..9 {
+            for col in 0..9 {
+                solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
             }
-            solutions.push(solution_sudoku);
-
-            return;
         }
+        solutions.push(solution_sudoku);
+
+        return;
     }
 
     for num in 1..=9 {
@@ -198,4 +199,112 @@ fn is_safe(
        If not, it returns false, meaning that the cell is not safe.
     */
     (rows[i] & bit) == 0 && (cols[j] & bit) == 0 && (subgrids[(i / 3) * 3 + j / 3] & bit) == 0
+}
+
+/*
+    Unit Tests!!
+*/
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve_empty_puzzle() {
+        let puzzle = Sudoku::new();
+        let (solution, stats) = find_one_solution(&puzzle);
+
+        assert!(solution.is_some(), "Empty puzzle should have a solution");
+        assert!(stats.solutions_found == 1);
+        assert!(stats.nodes_explored > 0);
+
+        println!("{}", puzzle)
+    }
+
+    #[test]
+    fn test_solve_already_solved_puzzle() {
+        let mut puzzle = Sudoku::new();
+        // Set up a known valid solution
+        let solved_board = [
+            [5, 3, 4, 6, 7, 8, 9, 1, 2],
+            [6, 7, 2, 1, 9, 5, 3, 4, 8],
+            [1, 9, 8, 3, 4, 2, 5, 6, 7],
+            [8, 5, 9, 7, 6, 1, 4, 2, 3],
+            [4, 2, 6, 8, 5, 3, 7, 9, 1],
+            [7, 1, 3, 9, 2, 4, 8, 5, 6],
+            [9, 6, 1, 5, 3, 7, 2, 8, 4],
+            [2, 8, 7, 4, 1, 9, 6, 3, 5],
+            [3, 4, 5, 2, 8, 6, 1, 7, 9],
+        ];
+
+        for i in 0..9 {
+            for j in 0..9 {
+                puzzle.set_cell(i, j, solved_board[i][j]).unwrap();
+            }
+        }
+
+        let (solution, stats) = find_one_solution(&puzzle);
+        assert!(
+            solution.is_some(),
+            "Already solved puzzle should return a solution"
+        );
+        // Should find solution very quickly (minimal nodes explored)
+    }
+
+    #[test]
+    fn test_shultz_301() {
+        #[rustfmt::skip]
+        let preset = [
+            [None,    Some(3), Some(9), Some(5), None,     None,     None,     None,     None    ],
+            [None,    None,    None,    Some(8), None,     None,     None,     Some(7),  None    ],
+            [None,    None,    None,    None,    Some(1),  None,     Some(9),  None,     Some(4) ],
+            [Some(1), None,    None,    Some(4), None,     None,     None,     None,     Some(3) ],
+            [None,    None,    None,    None,    None,     None,     None,     None,     None    ],
+            [None,    None,    Some(7), None,    None,     None,     Some(8),  Some(6),  None    ],
+            [None,    None,    Some(6), Some(7), None,     Some(8),  Some(2),  None,     None    ],
+            [None,    Some(1), None,    None,    Some(9),  None,     None,     None,     Some(5) ],
+            [None,    None,    None,    None,    None,     Some(1),  None,     None,     Some(8) ],
+        ];
+
+        let puzzle = Sudoku::from_preset(preset);
+
+        let (solution, stats) = find_one_solution(&puzzle);
+        assert!(solution.is_some(), "Puzzle should have a solution");
+        assert!(stats.solutions_found == 1);
+
+        // Optional: verify the solution is actually valid
+        if let Some(solved_puzzle) = solution {
+            assert!(solved_puzzle.is_solved(), "Solution should be valid");
+            println!("{}", solved_puzzle)
+        }
+    }
+
+    #[test]
+    fn test_find_all_solutions_empty() {
+        let mut puzzle = Sudoku::new();
+        let (solutions, stats) = find_all_solutions(&mut puzzle);
+
+        // Empty puzzle has many solutions
+        assert!(solutions.len() > 1);
+        assert!(stats.solutions_found > 1);
+    }
+
+    #[test]
+    fn test_is_safe_function() {
+        let mut rows = [0u16; 9];
+        let mut cols = [0u16; 9];
+        let mut subgrids = [0u16; 9];
+
+        // Place number 5 at position (0,0)
+        rows[0] |= 1 << 5;
+        cols[0] |= 1 << 5;
+        subgrids[0] |= 1 << 5;
+
+        // Should not be safe to place 5 again in same row/col/subgrid
+        assert!(!is_safe(&rows, &cols, &subgrids, 0, 1, 5));
+        assert!(!is_safe(&rows, &cols, &subgrids, 1, 0, 5));
+        assert!(!is_safe(&rows, &cols, &subgrids, 1, 1, 5));
+
+        // Should be safe to place different number
+        assert!(is_safe(&rows, &cols, &subgrids, 0, 1, 6));
+    }
 }
