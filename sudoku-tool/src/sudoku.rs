@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 use std::fmt;
+use std::fs;
+use std::path::Path;
 
 use array2d::Array2D;
 
@@ -211,6 +213,54 @@ impl fmt::Display for Sudoku {
             writeln!(f)?;
         }
         Ok(())
+    }
+}
+
+// For input file reading
+impl Sudoku {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {
+        let content = fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read file: {}", e))?;
+        
+        let mut preset = [[None; 9]; 9];
+        let mut row = 0;
+        
+        for line in content.lines() {
+            // Skip empty lines
+            if line.trim().is_empty() {
+                continue;
+            }
+            
+            if row >= 9 {
+                return Err("Too many rows in file".to_string());
+            }
+            
+            let numbers: Vec<&str> = line.split_whitespace().collect();
+            if numbers.len() != 9 {
+                return Err(format!("Row {} has {} numbers, expected 9", row + 1, numbers.len()));
+            }
+            
+            for (col, num_str) in numbers.iter().enumerate() {
+                preset[row][col] = match *num_str {
+                    "_" => None,
+                    num => {
+                        let value = num.parse::<u8>()
+                            .map_err(|_| format!("Invalid number '{}' at position ({}, {})", num, row + 1, col + 1))?;
+                        if value < 1 || value > 9 {
+                            return Err(format!("Number {} out of range 1-9 at position ({}, {})", value, row + 1, col + 1));
+                        }
+                        Some(value)
+                    }
+                };
+            }
+            row += 1;
+        }
+        
+        if row != 9 {
+            return Err("Not enough rows in file".to_string());
+        }
+        
+        Ok(Sudoku::from_preset(preset))
     }
 }
 
