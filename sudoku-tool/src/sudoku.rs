@@ -213,3 +213,96 @@ impl fmt::Display for Sudoku {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_board() {
+        let empty_sudoku = Sudoku::new();
+        assert!(!empty_sudoku.is_solved(), "Empty board should not be solved");
+    }
+
+    #[test]
+    fn test_solved_board() {
+        #[rustfmt::skip]
+        let preset = [
+            [Some(5), Some(3), Some(4), Some(6), Some(7), Some(8), Some(9), Some(1), Some(2)],
+            [Some(6), Some(7), Some(2), Some(1), Some(9), Some(5), Some(3), Some(4), Some(8)],
+            [Some(1), Some(9), Some(8), Some(3), Some(4), Some(2), Some(5), Some(6), Some(7)],
+            [Some(8), Some(5), Some(9), Some(7), Some(6), Some(1), Some(4), Some(2), Some(3)],
+            [Some(4), Some(2), Some(6), Some(8), Some(5), Some(3), Some(7), Some(9), Some(1)],
+            [Some(7), Some(1), Some(3), Some(9), Some(2), Some(4), Some(8), Some(5), Some(6)],
+            [Some(9), Some(6), Some(1), Some(5), Some(3), Some(7), Some(2), Some(8), Some(4)],
+            [Some(2), Some(8), Some(7), Some(4), Some(1), Some(9), Some(6), Some(3), Some(5)],
+            [Some(3), Some(4), Some(5), Some(2), Some(8), Some(6), Some(1), Some(7), Some(9)],
+        ];
+
+        let solved_sudoku = Sudoku::from_preset(preset);
+        assert!(solved_sudoku.is_solved(), "Solved board should be marked as solved");
+    }
+
+    #[test]
+    fn test_set_cell_valid() {
+        let mut sudoku = Sudoku::new();
+        assert!(sudoku.set_cell(0, 0, 5).is_ok());
+        assert!(sudoku.set_cell(8, 8, 9).is_ok());
+    }
+
+    #[test]
+    fn test_set_cell_invalid_position() {
+        let mut sudoku = Sudoku::new();
+        assert!(sudoku.set_cell(10, 0, 5).is_err());
+        assert!(sudoku.set_cell(0, 10, 5).is_err());
+    }
+
+    #[test]
+    fn test_set_cell_invalid_value() {
+        let mut sudoku = Sudoku::new();
+        assert!(sudoku.set_cell(0, 0, 0).is_err());
+        assert!(sudoku.set_cell(0, 0, 10).is_err());
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid value 10")]
+    fn test_invalid_preset_value() {
+        #[rustfmt::skip]
+        let invalid_preset = [
+            [Some(5), Some(3), Some(4), Some(6), Some(7), Some(8), Some(9), Some(1), Some(2)],
+            [Some(6), Some(7), Some(2), Some(1), Some(9), Some(5), Some(3), Some(4), Some(8)],
+            [Some(1), Some(9), Some(8), Some(3), Some(4), Some(2), Some(5), Some(6), Some(7)],
+            [Some(8), Some(5), Some(9), Some(7), Some(6), Some(1), Some(4), Some(2), Some(3)],
+            [Some(4), Some(2), Some(6), Some(8), Some(5), Some(3), Some(7), Some(9), Some(1)],
+            [Some(7), Some(1), Some(3), Some(9), Some(2), Some(4), Some(8), Some(5), Some(6)],
+            [Some(9), Some(6), Some(1), Some(5), Some(3), Some(7), Some(2), Some(8), Some(4)],
+            [Some(2), Some(8), Some(7), Some(4), Some(1), Some(9), Some(6), Some(3), Some(5)],
+            [Some(3), Some(4), Some(5), Some(2), Some(8), Some(6), Some(1), Some(7), Some(10)], // Invalid value
+        ];
+
+        let _ = Sudoku::from_preset(invalid_preset);
+    }
+
+    #[test]
+    fn test_modify_solved_board() {
+        #[rustfmt::skip]
+        let preset = [
+            [Some(5), Some(3), Some(4), Some(6), Some(7), Some(8), Some(9), Some(1), Some(2)],
+            [Some(6), Some(7), Some(2), Some(1), Some(9), Some(5), Some(3), Some(4), Some(8)],
+            [Some(1), Some(9), Some(8), Some(3), Some(4), Some(2), Some(5), Some(6), Some(7)],
+            [Some(8), Some(5), Some(9), Some(7), Some(6), Some(1), Some(4), Some(2), Some(3)],
+            [Some(4), Some(2), Some(6), Some(8), Some(5), Some(3), Some(7), Some(9), Some(1)],
+            [Some(7), Some(1), Some(3), Some(9), Some(2), Some(4), Some(8), Some(5), Some(6)],
+            [Some(9), Some(6), Some(1), Some(5), Some(3), Some(7), Some(2), Some(8), Some(4)],
+            [Some(2), Some(8), Some(7), Some(4), Some(1), Some(9), Some(6), Some(3), Some(5)],
+            [Some(3), Some(4), Some(5), Some(2), Some(8), Some(6), Some(1), Some(7), Some(9)],
+        ];
+
+        let mut solved_sudoku = Sudoku::from_preset(preset);
+        assert!(solved_sudoku.is_solved());
+        
+        // Modify a cell to create a conflict
+        solved_sudoku.set_cell(0, 0, 6).unwrap();
+        assert!(!solved_sudoku.is_solved(), "After modification, board should not be solved");
+    }
+}

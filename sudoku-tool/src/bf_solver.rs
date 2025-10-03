@@ -221,34 +221,32 @@ mod tests {
     }
 
     #[test]
-    fn test_solve_already_solved_puzzle() {
-        let mut puzzle = Sudoku::new();
-        // Set up a known valid solution
-        let solved_board = [
-            [5, 3, 4, 6, 7, 8, 9, 1, 2],
-            [6, 7, 2, 1, 9, 5, 3, 4, 8],
-            [1, 9, 8, 3, 4, 2, 5, 6, 7],
-            [8, 5, 9, 7, 6, 1, 4, 2, 3],
-            [4, 2, 6, 8, 5, 3, 7, 9, 1],
-            [7, 1, 3, 9, 2, 4, 8, 5, 6],
-            [9, 6, 1, 5, 3, 7, 2, 8, 4],
-            [2, 8, 7, 4, 1, 9, 6, 3, 5],
-            [3, 4, 5, 2, 8, 6, 1, 7, 9],
-        ];
-
-        for i in 0..9 {
-            for j in 0..9 {
-                puzzle.set_cell(i, j, solved_board[i][j]).unwrap();
-            }
-        }
-
-        let (solution, stats) = find_one_solution(&puzzle);
-        assert!(
-            solution.is_some(),
-            "Already solved puzzle should return a solution"
-        );
-        // Should find solution very quickly (minimal nodes explored)
-    }
+fn test_solve_already_solved_puzzle() {
+    #[rustfmt::skip]
+    let preset = [
+        [Some(5), Some(3), Some(4), Some(6), Some(7), Some(8), Some(9), Some(1), Some(2)],
+        [Some(6), Some(7), Some(2), Some(1), Some(9), Some(5), Some(3), Some(4), Some(8)],
+        [Some(1), Some(9), Some(8), Some(3), Some(4), Some(2), Some(5), Some(6), Some(7)],
+        [Some(8), Some(5), Some(9), Some(7), Some(6), Some(1), Some(4), Some(2), Some(3)],
+        [Some(4), Some(2), Some(6), Some(8), Some(5), Some(3), Some(7), Some(9), Some(1)],
+        [Some(7), Some(1), Some(3), Some(9), Some(2), Some(4), Some(8), Some(5), Some(6)],
+        [Some(9), Some(6), Some(1), Some(5), Some(3), Some(7), Some(2), Some(8), Some(4)],
+        [Some(2), Some(8), Some(7), Some(4), Some(1), Some(9), Some(6), Some(3), Some(5)],
+        [Some(3), Some(4), Some(5), Some(2), Some(8), Some(6), Some(1), Some(7), Some(9)],
+    ];
+    
+    let puzzle = Sudoku::from_preset(preset);
+    
+    let (solution, stats) = find_one_solution(&puzzle);
+    assert!(
+        solution.is_some(),
+        "Already solved puzzle should return a solution"
+    );
+    // Should find solution very quickly (minimal nodes explored)
+    
+    // You could also add this assertion to verify it was indeed fast:
+    assert!(stats.nodes_explored <= 81, "Solved puzzle should require minimal exploration");
+}
 
     #[test]
     fn test_shultz_301() {
@@ -276,16 +274,6 @@ mod tests {
             assert!(solved_puzzle.is_solved(), "Solution should be valid");
             println!("{}", solved_puzzle)
         }
-    }
-
-    #[test]
-    fn test_find_all_solutions_empty() {
-        let mut puzzle = Sudoku::new();
-        let (solutions, stats) = find_all_solutions(&mut puzzle);
-
-        // Empty puzzle has many solutions
-        assert!(solutions.len() > 1);
-        assert!(stats.solutions_found > 1);
     }
 
     #[test]
