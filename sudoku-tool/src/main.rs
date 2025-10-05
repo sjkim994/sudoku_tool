@@ -45,6 +45,8 @@ fn main() {
 
     let multiple_solution_files = [
         "puzzles/murty_2_soln.txt",
+        "puzzles/shortz_301.txt",
+        "puzzles/mepham_d.txt",
     ];
 
     for file_path in multiple_solution_files.iter() {
