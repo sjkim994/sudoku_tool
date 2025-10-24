@@ -1,13 +1,163 @@
 use crate::sudoku::Sudoku;
 use std::time::{Duration, Instant};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SolverStats {
     pub solutions_found: usize,
     pub search_duration: Duration,
     pub max_recursion_depth: usize,
     pub nodes_explored: usize,
     pub backtracks: usize,
+    pub tree_width_by_level: [usize; 81], // Vec that stores width at each depth level (index)
+}
+
+impl Default for SolverStats {
+    fn default() -> Self {
+        Self {
+            solutions_found: 0,
+            search_duration: Duration::default(),
+            max_recursion_depth: 0,
+            nodes_explored: 0,
+            backtracks: 0,
+            tree_width_by_level: [0; 81],
+        }
+    }
+}
+
+impl SolverStats {
+    /// Print comprehensive analysis of solver performance and search tree
+    pub fn print_analysis(&self) {
+        println!("=== Sudoku Search Tree Analysis ===");
+
+        let (max_width, max_width_depth) = self.max_tree_width();
+        let total_nodes = self.total_nodes_from_tree();
+
+        println!("Summary:");
+        println!("  Solutions found: {}", self.solutions_found);
+        println!("  Search duration: {:?}", self.search_duration);
+        println!("  Total nodes explored: {}", self.nodes_explored);
+        println!(
+            "  Sum of tree widths: {} (verification: {})",
+            total_nodes,
+            if self.is_tree_data_consistent() {
+                "PASS"
+            } else {
+                "FAIL"
+            }
+        );
+        println!(
+            "  Maximum tree width: {} at depth {}",
+            max_width, max_width_depth
+        );
+        println!("  Maximum recursion depth: {}", self.max_recursion_depth);
+        println!("  Backtracks: {}", self.backtracks);
+        println!("  Branching levels: {}", self.branching_levels_count());
+        println!(
+            "  Avg branching factor: {:.2}",
+            self.average_branching_factor()
+        );
+
+        self.print_tree_bar_chart();
+
+        println!("=====================================");
+    }
+
+    /// Get the maximum tree width and its depth
+    pub fn max_tree_width(&self) -> (usize, usize) {
+        let max_width = self.tree_width_by_level.iter().max().unwrap_or(&0);
+        let depth = self
+            .tree_width_by_level
+            .iter()
+            .position(|&w| w == *max_width)
+            .unwrap_or(0);
+        (*max_width, depth)
+    }
+
+    /// Get the total number of nodes from tree width data (for verification)
+    pub fn total_nodes_from_tree(&self) -> usize {
+        self.tree_width_by_level.iter().sum()
+    }
+
+    /// Check if tree width data is consistent with nodes explored count
+    pub fn is_tree_data_consistent(&self) -> bool {
+        self.total_nodes_from_tree() == self.nodes_explored
+    }
+
+    /// Get the average branching factor
+    pub fn average_branching_factor(&self) -> f64 {
+        let branching_levels = self.branching_levels_count();
+        if branching_levels > 0 {
+            self.nodes_explored as f64 / branching_levels as f64
+        } else {
+            0.0
+        }
+    }
+
+    /// Get the number of levels with actual branching
+    pub fn branching_levels_count(&self) -> usize {
+        self.tree_width_by_level.iter().filter(|&&w| w > 0).count()
+    }
+
+    /// Print tree width distribution (non-zero only)
+    pub fn print_tree_widths(&self) {
+        println!("\nTree width by level (non-zero only):");
+        for (depth, width) in self.tree_width_by_level.iter().enumerate() {
+            if *width > 0 {
+                println!("  Depth {:2}: {:4} nodes", depth, width);
+            }
+        }
+    }
+
+    /// Print polished bar chart with perfect alignment
+    pub fn print_tree_bar_chart(&self) {
+        let non_zero_levels = self.non_zero_tree_widths();
+        if non_zero_levels.is_empty() {
+            println!("\nTree Width Distribution: (no data)");
+            return;
+        }
+
+        let (max_width, _) = self.max_tree_width();
+        println!("\nTree Width Distribution (Bar Chart):");
+
+        let max_bar_width = 50;
+        let scale_factor = max_bar_width as f64 / max_width as f64;
+
+        // Calculate the maximum width needed for numbers
+        let max_num_width = non_zero_levels
+            .iter()
+            .map(|(_, w)| format!("{}", w).len())
+            .max()
+            .unwrap_or(1);
+
+        for (depth, width) in non_zero_levels {
+            let bar_length = (width as f64 * scale_factor).max(1.0) as usize; // At least 1 for visibility
+            let bar = "█".repeat(bar_length);
+
+            // Perfect alignment using fixed-width number formatting
+            println!(
+                "  Depth {:2}: {:>num_width$} {}",
+                depth,
+                width,
+                bar,
+                num_width = max_num_width
+            );
+        }
+
+        // Add scale reference
+        println!(
+            "\n  Scale: 1█ ≈ {:.0} nodes",
+            max_width as f64 / max_bar_width as f64
+        );
+    }
+
+    /// Get a vector of (depth, width) pairs for non-zero levels only
+    pub fn non_zero_tree_widths(&self) -> Vec<(usize, usize)> {
+        self.tree_width_by_level
+            .iter()
+            .enumerate()
+            .filter_map(|(depth, &w)| if w > 0 { Some((depth, w)) } else { None })
+            .collect()
+    }
 }
 
 // Finds a solution to a Sudoku puzzle
@@ -108,13 +258,8 @@ fn solve_recursive(
     solutions: &mut Vec<Sudoku>,
     find_all: bool,
 ) {
-    // Update depth and node stats
-    stats.nodes_explored += 1;
-    stats.max_recursion_depth = stats.max_recursion_depth.max(depth);
-
-    let (mut i, mut j) = (i, j);
-
     // Find next empty cell
+    let (mut i, mut j) = (i, j);
     while i < 9 && board[i][j] != 0 {
         j += 1;
         if j == 9 {
@@ -136,6 +281,11 @@ fn solve_recursive(
 
         return;
     }
+
+    // Update depth and node stats
+    stats.nodes_explored += 1;
+    stats.max_recursion_depth = stats.max_recursion_depth.max(depth);
+    stats.tree_width_by_level[depth] += 1;
 
     for num in 1..=9 {
         if is_safe(rows, cols, subgrids, i, j, num) {
@@ -221,8 +371,8 @@ mod tests {
     }
 
     #[test]
-fn test_solve_already_solved_puzzle() {
-    #[rustfmt::skip]
+    fn test_solve_already_solved_puzzle() {
+        #[rustfmt::skip]
     let preset = [
         [Some(5), Some(3), Some(4), Some(6), Some(7), Some(8), Some(9), Some(1), Some(2)],
         [Some(6), Some(7), Some(2), Some(1), Some(9), Some(5), Some(3), Some(4), Some(8)],
@@ -234,19 +384,22 @@ fn test_solve_already_solved_puzzle() {
         [Some(2), Some(8), Some(7), Some(4), Some(1), Some(9), Some(6), Some(3), Some(5)],
         [Some(3), Some(4), Some(5), Some(2), Some(8), Some(6), Some(1), Some(7), Some(9)],
     ];
-    
-    let puzzle = Sudoku::from_preset(preset);
-    
-    let (solution, stats) = find_one_solution(&puzzle);
-    assert!(
-        solution.is_some(),
-        "Already solved puzzle should return a solution"
-    );
-    // Should find solution very quickly (minimal nodes explored)
-    
-    // You could also add this assertion to verify it was indeed fast:
-    assert!(stats.nodes_explored <= 81, "Solved puzzle should require minimal exploration");
-}
+
+        let puzzle = Sudoku::from_preset(preset);
+
+        let (solution, stats) = find_one_solution(&puzzle);
+        assert!(
+            solution.is_some(),
+            "Already solved puzzle should return a solution"
+        );
+        // Should find solution very quickly (minimal nodes explored)
+
+        // You could also add this assertion to verify it was indeed fast:
+        assert!(
+            stats.nodes_explored <= 81,
+            "Solved puzzle should require minimal exploration"
+        );
+    }
 
     #[test]
     fn test_shultz_301() {
@@ -272,7 +425,39 @@ fn test_solve_already_solved_puzzle() {
         // Optional: verify the solution is actually valid
         if let Some(solved_puzzle) = solution {
             assert!(solved_puzzle.is_solved(), "Solution should be valid");
-            println!("{}", solved_puzzle)
+            println!("{}", solved_puzzle);
+
+            stats.print_analysis();
+        }
+    }
+
+    #[test]
+    fn test_mepham_d() {
+        #[rustfmt::skip]
+        let preset = [
+            [None,    Some(9), None,    Some(7), None,     None,     Some(8), Some(6), None    ],
+            [None,    Some(3), Some(1), None,    None,     Some(5),  None,    Some(2), None    ],
+            [Some(8), None,    Some(6), None,    None,     None,     None,    None,    None    ],
+            [None,    None,    Some(7), None,    Some(5),  None,     None,    None,    Some(6) ],
+            [None,    None,    None,    Some(3), None,     Some(7),  None,    None,    None    ],
+            [Some(5), None,    None,    None,    Some(1),  None,     Some(7), None,    None    ],
+            [None,    None,    None,    None,    None,     None,     Some(1), None,    Some(9) ],
+            [None,    Some(2), None,    Some(6), None,     None,     Some(3), Some(5), None    ],
+            [None,    Some(5), Some(4), None,    None,     Some(8),  None,    Some(7), None    ],
+        ];
+
+        let puzzle = Sudoku::from_preset(preset);
+
+        let (solution, stats) = find_one_solution(&puzzle);
+        assert!(solution.is_some(), "Puzzle should have a solution");
+        assert!(stats.solutions_found == 1);
+
+        // Optional: verify the solution is actually valid
+        if let Some(solved_puzzle) = solution {
+            assert!(solved_puzzle.is_solved(), "Solution should be valid");
+            println!("{}", solved_puzzle);
+
+            stats.print_analysis();
         }
     }
 
@@ -294,5 +479,34 @@ fn test_solve_already_solved_puzzle() {
 
         // Should be safe to place different number
         assert!(is_safe(&rows, &cols, &subgrids, 0, 1, 6));
+    }
+
+    #[test]
+    fn test_tree_width_tracking() {
+        let puzzle = Sudoku::new();
+        let (solution, stats) = find_one_solution(&puzzle);
+
+        assert!(solution.is_some());
+
+        // These should still hold true
+        let total_nodes: usize = stats.tree_width_by_level.iter().sum();
+        assert_eq!(total_nodes, stats.nodes_explored);
+        assert_eq!(stats.tree_width_by_level[0], 1);
+
+        // Max depth should now be 80, not 81
+        assert!(stats.max_recursion_depth <= 80);
+
+        // Optional: verify the solution is actually valid
+        if let Some(solved_puzzle) = solution {
+            assert!(solved_puzzle.is_solved(), "Solution should be valid");
+            println!("{}", solved_puzzle)
+        }
+
+        println!("Tree width by level:");
+        for (depth, width) in stats.tree_width_by_level.iter().enumerate() {
+            if *width > 0 {
+                println!("Depth {}: {} nodes", depth, width);
+            }
+        }
     }
 }

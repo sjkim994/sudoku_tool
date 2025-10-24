@@ -196,13 +196,13 @@ impl fmt::Display for Sudoku {
             if i % 3 == 0 && i != 0 {
                 writeln!(f, "------+-------+------")?;
             }
-            
+
             for (j, cell) in row.enumerate() {
                 // Add vertical separators every 3 columns
                 if j % 3 == 0 && j != 0 {
                     write!(f, "| ")?;
                 }
-                
+
                 // Print cell value or '_' for empty
                 if let Some(value) = self.get_solved_value(i, j) {
                     write!(f, "{} ", value)?;
@@ -219,35 +219,50 @@ impl fmt::Display for Sudoku {
 // For input file reading
 impl Sudoku {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let content = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
-        
+        let content =
+            fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
+
         let mut preset = [[None; 9]; 9];
         let mut row = 0;
-        
+
         for line in content.lines() {
             // Skip empty lines
             if line.trim().is_empty() {
                 continue;
             }
-            
+
             if row >= 9 {
                 return Err("Too many rows in file".to_string());
             }
-            
+
             let numbers: Vec<&str> = line.split_whitespace().collect();
             if numbers.len() != 9 {
-                return Err(format!("Row {} has {} numbers, expected 9", row + 1, numbers.len()));
+                return Err(format!(
+                    "Row {} has {} numbers, expected 9",
+                    row + 1,
+                    numbers.len()
+                ));
             }
-            
+
             for (col, num_str) in numbers.iter().enumerate() {
                 preset[row][col] = match *num_str {
                     "_" => None,
                     num => {
-                        let value = num.parse::<u8>()
-                            .map_err(|_| format!("Invalid number '{}' at position ({}, {})", num, row + 1, col + 1))?;
+                        let value = num.parse::<u8>().map_err(|_| {
+                            format!(
+                                "Invalid number '{}' at position ({}, {})",
+                                num,
+                                row + 1,
+                                col + 1
+                            )
+                        })?;
                         if value < 1 || value > 9 {
-                            return Err(format!("Number {} out of range 1-9 at position ({}, {})", value, row + 1, col + 1));
+                            return Err(format!(
+                                "Number {} out of range 1-9 at position ({}, {})",
+                                value,
+                                row + 1,
+                                col + 1
+                            ));
                         }
                         Some(value)
                     }
@@ -255,11 +270,11 @@ impl Sudoku {
             }
             row += 1;
         }
-        
+
         if row != 9 {
             return Err("Not enough rows in file".to_string());
         }
-        
+
         Ok(Sudoku::from_preset(preset))
     }
 }
@@ -271,7 +286,10 @@ mod tests {
     #[test]
     fn test_empty_board() {
         let empty_sudoku = Sudoku::new();
-        assert!(!empty_sudoku.is_solved(), "Empty board should not be solved");
+        assert!(
+            !empty_sudoku.is_solved(),
+            "Empty board should not be solved"
+        );
     }
 
     #[test]
@@ -290,7 +308,10 @@ mod tests {
         ];
 
         let solved_sudoku = Sudoku::from_preset(preset);
-        assert!(solved_sudoku.is_solved(), "Solved board should be marked as solved");
+        assert!(
+            solved_sudoku.is_solved(),
+            "Solved board should be marked as solved"
+        );
     }
 
     #[test]
@@ -350,9 +371,12 @@ mod tests {
 
         let mut solved_sudoku = Sudoku::from_preset(preset);
         assert!(solved_sudoku.is_solved());
-        
+
         // Modify a cell to create a conflict
         solved_sudoku.set_cell(0, 0, 6).unwrap();
-        assert!(!solved_sudoku.is_solved(), "After modification, board should not be solved");
+        assert!(
+            !solved_sudoku.is_solved(),
+            "After modification, board should not be solved"
+        );
     }
 }
