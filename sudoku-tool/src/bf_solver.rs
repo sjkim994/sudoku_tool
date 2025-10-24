@@ -8,7 +8,8 @@ pub struct SolverStats {
     pub max_recursion_depth: usize,
     pub nodes_explored: usize,
     pub backtracks: usize,
-    pub tree_width_by_level: [usize; 81], // Vec that stores width at each depth level (index)
+    pub leaves: usize,
+    pub tree_width_by_level: [usize; 81],
 }
 
 impl Default for SolverStats {
@@ -19,6 +20,7 @@ impl Default for SolverStats {
             max_recursion_depth: 0,
             nodes_explored: 0,
             backtracks: 0,
+            leaves: 0,
             tree_width_by_level: [0; 81],
         }
     }
@@ -37,6 +39,17 @@ impl SolverStats {
         println!("  Search duration: {:?}", self.search_duration);
         println!("  Total nodes explored: {}", self.nodes_explored);
         println!(
+            "  Total leaves: {} ({} solutions, {} dead ends)",
+            self.leaves,
+            self.solutions_found,
+            self.dead_end_leaves()
+        );
+        println!("  Leaf ratio: {:.2}%", self.leaf_ratio() * 100.0);
+        println!(
+            "  Solution leaf percentage: {:.6}%",
+            self.solution_leaf_percentage()
+        );
+        println!(
             "  Sum of tree widths: {} (verification: {})",
             total_nodes,
             if self.is_tree_data_consistent() {
@@ -51,11 +64,11 @@ impl SolverStats {
         );
         println!("  Maximum recursion depth: {}", self.max_recursion_depth);
         println!("  Backtracks: {}", self.backtracks);
-        println!("  Branching levels: {}", self.branching_levels_count());
-        println!(
-            "  Avg branching factor: {:.2}",
-            self.average_branching_factor()
-        );
+        // println!("  Branching levels: {}", self.branching_levels_count());
+        // println!(
+        //     "  Avg branching factor: {:.2}",
+        //     self.average_branching_factor()
+        // );
 
         self.print_tree_bar_chart();
 
@@ -157,6 +170,29 @@ impl SolverStats {
             .enumerate()
             .filter_map(|(depth, &w)| if w > 0 { Some((depth, w)) } else { None })
             .collect()
+    }
+
+    /// Get the number of dead-end leaves (positions with no valid moves)
+    pub fn dead_end_leaves(&self) -> usize {
+        self.leaves.saturating_sub(self.solutions_found)
+    }
+
+    /// Get the leaf-to-node ratio (higher means more pruning)
+    pub fn leaf_ratio(&self) -> f64 {
+        if self.nodes_explored > 0 {
+            self.leaves as f64 / self.nodes_explored as f64
+        } else {
+            0.0
+        }
+    }
+
+    /// Get the percentage of leaves that are solutions
+    pub fn solution_leaf_percentage(&self) -> f64 {
+        if self.leaves > 0 {
+            self.solutions_found as f64 / self.leaves as f64 * 100.0
+        } else {
+            0.0
+        }
     }
 }
 
@@ -279,6 +315,7 @@ fn solve_recursive(
         }
         solutions.push(solution_sudoku);
 
+        stats.leaves += 1; // Solution leaf
         return;
     }
 
@@ -287,8 +324,12 @@ fn solve_recursive(
     stats.max_recursion_depth = stats.max_recursion_depth.max(depth);
     stats.tree_width_by_level[depth] += 1;
 
+    let mut any_valid_moves = false;
+
     for num in 1..=9 {
         if is_safe(rows, cols, subgrids, i, j, num) {
+            any_valid_moves = true;
+
             // Place number
             board[i][j] = num;
 
@@ -327,6 +368,11 @@ fn solve_recursive(
             subgrids[(i / 3) * 3 + j / 3] &= !bit;
             stats.backtracks += 1;
         }
+    }
+
+    if !any_valid_moves {
+        // Dead-end leaf
+        stats.leaves += 1;
     }
 }
 
@@ -431,6 +477,42 @@ mod tests {
         }
     }
 
+        #[test]
+    fn test_shultz_301_all_soln() {
+        #[rustfmt::skip]
+        let preset = [
+            [None,    Some(3), Some(9), Some(5), None,     None,     None,     None,     None    ],
+            [None,    None,    None,    Some(8), None,     None,     None,     Some(7),  None    ],
+            [None,    None,    None,    None,    Some(1),  None,     Some(9),  None,     Some(4) ],
+            [Some(1), None,    None,    Some(4), None,     None,     None,     None,     Some(3) ],
+            [None,    None,    None,    None,    None,     None,     None,     None,     None    ],
+            [None,    None,    Some(7), None,    None,     None,     Some(8),  Some(6),  None    ],
+            [None,    None,    Some(6), Some(7), None,     Some(8),  Some(2),  None,     None    ],
+            [None,    Some(1), None,    None,    Some(9),  None,     None,     None,     Some(5) ],
+            [None,    None,    None,    None,    None,     Some(1),  None,     None,     Some(8) ],
+        ];
+
+        let puzzle = Sudoku::from_preset(preset);
+
+        let (solutions, stats) = find_all_solutions(&puzzle);
+
+        // Print comprehensive analysis
+        stats.print_analysis();
+
+        // Print all solutions to verify they're different
+        println!("\nAll solutions found:");
+        for (i, solution) in solutions.iter().enumerate() {
+            println!("Solution {}:", i + 1);
+            println!("{}", solution);
+            assert!(solution.is_solved(), "Solution {} should be valid", i + 1);
+
+            // Optional: Print a separator between solutions
+            if i < solutions.len() - 1 {
+                println!("{}", "-".repeat(30));
+            }
+        }
+    }
+
     #[test]
     fn test_mepham_d() {
         #[rustfmt::skip]
@@ -458,6 +540,82 @@ mod tests {
             println!("{}", solved_puzzle);
 
             stats.print_analysis();
+        }
+    }
+    
+    #[test]
+    fn test_mepham_d_all_soln() {
+        #[rustfmt::skip]
+        let preset = [
+            [None,    Some(9), None,    Some(7), None,     None,     Some(8), Some(6), None    ],
+            [None,    Some(3), Some(1), None,    None,     Some(5),  None,    Some(2), None    ],
+            [Some(8), None,    Some(6), None,    None,     None,     None,    None,    None    ],
+            [None,    None,    Some(7), None,    Some(5),  None,     None,    None,    Some(6) ],
+            [None,    None,    None,    Some(3), None,     Some(7),  None,    None,    None    ],
+            [Some(5), None,    None,    None,    Some(1),  None,     Some(7), None,    None    ],
+            [None,    None,    None,    None,    None,     None,     Some(1), None,    Some(9) ],
+            [None,    Some(2), None,    Some(6), None,     None,     Some(3), Some(5), None    ],
+            [None,    Some(5), Some(4), None,    None,     Some(8),  None,    Some(7), None    ],
+        ];
+
+        let puzzle = Sudoku::from_preset(preset);
+
+        let (solutions, stats) = find_all_solutions(&puzzle);
+
+        // Print comprehensive analysis
+        stats.print_analysis();
+
+        // Print all solutions to verify they're different
+        println!("\nAll solutions found:");
+        for (i, solution) in solutions.iter().enumerate() {
+            println!("Solution {}:", i + 1);
+            println!("{}", solution);
+            assert!(solution.is_solved(), "Solution {} should be valid", i + 1);
+
+            // Optional: Print a separator between solutions
+            if i < solutions.len() - 1 {
+                println!("{}", "-".repeat(30));
+            }
+        }
+    }
+
+    #[test]
+    fn test_murty_2_multiple_solutions() {
+        #[rustfmt::skip]
+        let preset = [
+            [Some(9), None,    Some(6), None,    Some(7), None,    Some(4), None,    Some(3)],
+            [None,    None,    None,    Some(4), None,    None,    Some(2), None,    None   ],
+            [None,    Some(7), None,    None,    Some(2), Some(3), None,    Some(1), None   ],
+            [Some(5), None,    None,    None,    None,    None,    Some(1), None,    None   ],
+            [None,    Some(4), None,    Some(2), None,    Some(8), None,    Some(6), None   ],
+            [None,    None,    Some(3), None,    None,    None,    None,    None,    Some(5)],
+            [None,    Some(3), None,    Some(7), None,    None,    None,    Some(5), None   ],
+            [None,    None,    Some(7), None,    None,    Some(5), None,    None,    None   ],
+            [Some(4), None,    Some(5), None,    Some(1), None,    Some(7), None,    Some(8)],
+        ];
+
+        let puzzle = Sudoku::from_preset(preset);
+
+        let (solutions, stats) = find_all_solutions(&puzzle);
+
+        // This puzzle should have multiple solutions
+        assert!(solutions.len() > 1, "Puzzle should have multiple solutions");
+        println!("Found {} solutions", solutions.len());
+
+        // Print comprehensive analysis
+        stats.print_analysis();
+
+        // Print all solutions to verify they're different
+        println!("\nAll solutions found:");
+        for (i, solution) in solutions.iter().enumerate() {
+            println!("Solution {}:", i + 1);
+            println!("{}", solution);
+            assert!(solution.is_solved(), "Solution {} should be valid", i + 1);
+
+            // Optional: Print a separator between solutions
+            if i < solutions.len() - 1 {
+                println!("{}", "-".repeat(30));
+            }
         }
     }
 
