@@ -1,0 +1,3 @@
+Puzzle,SolutionCount,NodesExplored,Backtracks,Leaves,MaxRecursionDepth,SearchDurationMicros,MaxTreeWidth,MaxTreeWidthDepth,AvgBranchingFactor,HasMultipleSolutions
+puzzles/single_solution/mepham_d.txt,1,10923,10870,2996,52,1698,1759,26,206.09,NO
+puzzles/single_solution/shortz_301.txt,1,547208,547150,190436,57,79239,124489,30,9434.62,NO

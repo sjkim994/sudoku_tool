@@ -1,0 +1,3 @@
+Puzzle,SolutionCount,NodesExplored,Backtracks,Leaves,MaxRecursionDepth,SearchDurationMicros,MaxTreeWidth,MaxTreeWidthDepth,AvgBranchingFactor,HasMultipleSolutions
+puzzles/multiple_solutions/easy.txt,1,4631,4631,1372,50,654,712,21,90.80,NO
+puzzles/multiple_solutions/murty_2_soln.txt,2,1212,1213,328,51,204,158,24,23.31,YES

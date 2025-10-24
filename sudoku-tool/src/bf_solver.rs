@@ -477,7 +477,7 @@ mod tests {
         }
     }
 
-        #[test]
+    #[test]
     fn test_shultz_301_all_soln() {
         #[rustfmt::skip]
         let preset = [
@@ -542,7 +542,7 @@ mod tests {
             stats.print_analysis();
         }
     }
-    
+
     #[test]
     fn test_mepham_d_all_soln() {
         #[rustfmt::skip]
