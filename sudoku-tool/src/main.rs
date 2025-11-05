@@ -1,12 +1,11 @@
-mod bf_solver;
-mod sudoku;
+mod core;
 
-use bf_solver::{SolverStats, find_all_solutions, find_one_solution};
+use core::bf_solver::{SolverStats, find_all_solutions, find_one_solution};
+use core::Sudoku;
+
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
-use sudoku::Sudoku;
 
 #[derive(Debug)]
 struct TestConfig {

@@ -1,4 +1,4 @@
-use crate::sudoku::Sudoku;
+use crate::core::sudoku::Sudoku;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
