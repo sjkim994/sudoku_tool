@@ -278,8 +278,67 @@ impl Sudoku {
 
         Ok(Sudoku::from_preset(preset))
     }
+    pub fn from_string(s: &str) -> Result<Self, String> {
+        // Remove any whitespace and ensure we have exactly 81 characters
+        let cleaned: String = s.chars().filter(|c| !c.is_whitespace()).collect();
+
+        if cleaned.len() != 81 {
+            return Err(format!(
+                "Invalid puzzle length: {} (expected 81 characters after removing whitespace). Original: '{}'",
+                cleaned.len(),
+                s
+            ));
+        }
+
+        let mut preset = [[None; 9]; 9];
+        let mut chars = cleaned.chars();
+
+        for row in 0..9 {
+            for col in 0..9 {
+                let ch = chars.next().unwrap();
+                let position = row * 9 + col + 1; // 1-based position for error messages
+
+                preset[row][col] = match ch {
+                    '.' | '0' => None, // Empty cell
+                    '1'..='9' => {
+                        let value = ch.to_digit(10).unwrap() as u8;
+                        Some(value)
+                    }
+                    _ => {
+                        return Err(format!(
+                            "Invalid character '{}' at position {} (row {}, col {}). Only digits 1-9, '.', or '0' are allowed.",
+                            ch,
+                            position,
+                            row + 1,
+                            col + 1
+                        ));
+                    }
+                };
+            }
+        }
+
+        Ok(Sudoku::from_preset(preset))
+    }
+
+    /// Convert Sudoku back to string representation (using '.' for empty cells)
+    pub fn to_string(&self) -> String {
+        let mut result = String::with_capacity(81);
+
+        for row in 0..9 {
+            for col in 0..9 {
+                if let Some(value) = self.get_solved_value(row, col) {
+                    result.push_str(&value.to_string());
+                } else {
+                    result.push('.');
+                }
+            }
+        }
+
+        result
+    }
 }
 
+// TODO: refactor into integration test
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -379,5 +438,72 @@ mod tests {
             !solved_sudoku.is_solved(),
             "After modification, board should not be solved"
         );
+    }
+    // Tests on from/toString
+    #[test]
+    fn test_from_string_dot_notation() {
+        let puzzle = Sudoku::from_string(
+            "1..5.37..6.3..8.9......98...1.......8761..........6...........7.8.9.76.47...6.312",
+        )
+        .expect("Valid dot notation should parse");
+
+        // Check a few specific cells
+        assert_eq!(puzzle.get_solved_value(0, 0), Some(1)); // First cell '1'
+        assert_eq!(puzzle.get_solved_value(0, 1), None); // Second cell '.'
+        assert_eq!(puzzle.get_solved_value(0, 2), None); // Third cell '.'
+        assert_eq!(puzzle.get_solved_value(0, 3), Some(5)); // Fourth cell '5'
+    }
+
+    #[test]
+    fn test_from_string_zero_notation() {
+        let puzzle = Sudoku::from_string(
+            "100503700603008090000009800010000000876100000000000600000000000780907604700060312",
+        )
+        .expect("Valid zero notation should parse");
+
+        // Should be identical to the dot notation version
+        assert_eq!(puzzle.get_solved_value(0, 0), Some(1));
+        assert_eq!(puzzle.get_solved_value(0, 1), None);
+        assert_eq!(puzzle.get_solved_value(0, 2), None);
+        assert_eq!(puzzle.get_solved_value(0, 3), Some(5));
+    }
+
+    #[test]
+    fn test_from_string_with_whitespace() {
+        let puzzle = Sudoku::from_string("1..5  .37..6.3..  8.9......98...1  .......8761.... ......6..  .........7.8.9.76.47...6.312")
+            .expect("String with whitespace should parse");
+
+        assert_eq!(puzzle.get_solved_value(0, 0), Some(1));
+        assert_eq!(puzzle.get_solved_value(0, 1), None);
+    }
+
+    #[test]
+    fn test_from_string_invalid_length() {
+        let result = Sudoku::from_string("123"); // Too short
+        assert!(result.is_err());
+
+        let result = Sudoku::from_string(&"1".repeat(100)); // Too long  
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_string_invalid_character() {
+        let result = Sudoku::from_string(
+            "1..5.37..6.3..8.9......98...1.......8761..........6...........7.8.9.76.47...6.31A",
+        );
+        assert!(result.is_err()); // 'A' is invalid
+    }
+
+    #[test]
+    fn test_to_string() {
+        let original_string =
+            "1..5.37..6.3..8.9......98...1.......8761..........6...........7.8.9.76.47...6.312";
+        let puzzle = Sudoku::from_string(original_string).unwrap();
+        let converted_string = puzzle.to_string();
+
+        // The converted string should match the original (with dots for empty cells)
+        assert_eq!(converted_string.len(), 81);
+        // First few characters should match
+        assert_eq!(&converted_string[0..4], "1..5");
     }
 }

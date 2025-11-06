@@ -6,5 +6,3 @@ pub mod core {
     pub mod sudoku;
     // Add other core modules as needed
 }
-
-pub mod input;

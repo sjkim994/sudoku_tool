@@ -20,10 +20,13 @@ fn test_order_coverage() {
     let col_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
     let (solution, stats) = find_one_solution_ord(&puzzle, Some(row_order), Some(col_order));
-    
-    assert!(solution.is_some(), "Empty puzzle should always have a solution regardless of order");
+
+    assert!(
+        solution.is_some(),
+        "Empty puzzle should always have a solution regardless of order"
+    );
     println!("Nodes explored: {}", stats.nodes_explored);
-    
+
     // An empty puzzle should explore roughly the same number of nodes regardless of order
     // If this fails, there's definitely a bug in the ordering logic
 }
