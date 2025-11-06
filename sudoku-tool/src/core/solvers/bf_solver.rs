@@ -444,7 +444,7 @@ fn solve_recursive(
     }
 }
 
-fn is_safe(
+pub fn is_safe(
     rows: &[u16; 9],
     cols: &[u16; 9],
     subgrids: &[u16; 9],
