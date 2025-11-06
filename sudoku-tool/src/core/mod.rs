@@ -1,5 +1,5 @@
-pub mod sudoku;
 pub mod solvers;
+pub mod sudoku;
 
-pub use sudoku::Sudoku;
 pub use solvers::{bf_solver, crook_solver};
+pub use sudoku::Sudoku;

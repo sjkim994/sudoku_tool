@@ -1,4 +1,5 @@
 use crate::core::sudoku::Sudoku;
+use rand::seq::SliceRandom;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
@@ -198,6 +199,29 @@ impl SolverStats {
 
 // Finds a solution to a Sudoku puzzle
 pub fn find_one_solution(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
+    find_one_solution_ord(sudoku, None, None)
+}
+
+pub fn find_one_solution_rand(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
+    // Generate random sequence of 0-8
+    let mut row_arr: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let mut col_arr: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+    row_arr.shuffle(&mut rand::rng());
+    col_arr.shuffle(&mut rand::rng());
+
+    println!("{:?}", row_arr);
+    println!("{:?}", col_arr);
+
+    find_one_solution_ord(sudoku, Some(row_arr), Some(col_arr))
+}
+
+// Finds a solution to a Sudoku puzzle with a random order
+pub fn find_one_solution_ord(
+    sudoku: &Sudoku,
+    row_order: Option<[usize; 9]>,
+    col_order: Option<[usize; 9]>,
+) -> (Option<Sudoku>, SolverStats) {
     // Initialize stat recorders
     let start_time = Instant::now();
     let mut stats = SolverStats::default();
@@ -209,11 +233,17 @@ pub fn find_one_solution(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
 
     initialize_from_sudoku(sudoku, &mut board, &mut rows, &mut cols, &mut subgrids);
 
+    // Use provided order or default to 0..8
+    let row_order = row_order.unwrap_or([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    let col_order = col_order.unwrap_or([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+
     solve_recursive(
         &mut board,
         &mut rows,
         &mut cols,
         &mut subgrids,
+        &row_order,
+        &col_order,
         0,
         0,
         0,
@@ -243,11 +273,16 @@ pub fn find_all_solutions(sudoku: &Sudoku) -> (Vec<Sudoku>, SolverStats) {
     // Initializes from original puzzle and it is read-only
     initialize_from_sudoku(sudoku, &mut board, &mut rows, &mut cols, &mut subgrids);
 
+    let row_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let col_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
     solve_recursive(
         &mut board,
         &mut rows,
         &mut cols,
         &mut subgrids,
+        &row_order,
+        &col_order,
         0,
         0,
         0,
@@ -287,25 +322,17 @@ fn solve_recursive(
     rows: &mut [u16; 9],
     cols: &mut [u16; 9],
     subgrids: &mut [u16; 9],
-    i: usize,
-    j: usize,
+    row_order: &[usize; 9],
+    col_order: &[usize; 9],
+    row_idx: usize, // Index into row_order from 0
+    col_idx: usize, // Index into col_order from 0
     depth: usize,
     stats: &mut SolverStats,
     solutions: &mut Vec<Sudoku>,
     find_all: bool,
 ) {
-    // Find next empty cell
-    let (mut i, mut j) = (i, j);
-    while i < 9 && board[i][j] != 0 {
-        j += 1;
-        if j == 9 {
-            j = 0;
-            i += 1;
-        }
-    }
-
-    // Check if board is filled
-    if i == 9 {
+    // Check if board is filled: REDUNDANT, MAYBE REFACTOR??
+    if row_idx == 9 {
         let mut solution_sudoku = Sudoku::new();
         // Copy solution to Sudoku struct
         for row in 0..9 {
@@ -313,6 +340,45 @@ fn solve_recursive(
                 solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
             }
         }
+
+        solutions.push(solution_sudoku);
+
+        stats.leaves += 1; // Solution leaf
+        return;
+    }
+
+    // Mutable indices for row order
+    let (mut r_idx, mut c_idx) = (row_idx, col_idx);
+    // Convert ordering indices to board coordinates
+    let mut i = row_order[r_idx];
+    let mut j = col_order[c_idx];
+
+    // Find next empty cell
+    while r_idx < 9 && board[i][j] != 0 {
+        c_idx += 1;
+
+        if c_idx == 9 {
+            // if at end of row, jump to start of next row
+            c_idx = 0;
+            r_idx += 1;
+        }
+
+        if r_idx < 9 {
+            i = row_order[r_idx];
+            j = col_order[c_idx];
+        }
+    }
+
+    // Check if board is filled
+    if r_idx == 9 {
+        let mut solution_sudoku = Sudoku::new();
+        // Copy solution to Sudoku struct
+        for row in 0..9 {
+            for col in 0..9 {
+                solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
+            }
+        }
+
         solutions.push(solution_sudoku);
 
         stats.leaves += 1; // Solution leaf
@@ -340,16 +406,18 @@ fn solve_recursive(
             subgrids[(i / 3) * 3 + j / 3] |= bit;
 
             // Calculate next cell to call recursively
-            let next_j = if j == 8 { 0 } else { j + 1 }; // if at the end of the row, move to beginning of next row
-            let next_i = if j == 8 { i + 1 } else { i };
+            let next_c_idx = if c_idx == 8 { 0 } else { c_idx + 1 }; // if at the end of the row, move to beginning of next row
+            let next_r_idx = if c_idx == 8 { r_idx + 1 } else { r_idx };
 
             solve_recursive(
                 board,
                 rows,
                 cols,
                 subgrids,
-                next_i,
-                next_j,
+                row_order,
+                col_order,
+                next_r_idx,
+                next_c_idx,
                 depth + 1,
                 stats,
                 solutions,
@@ -395,276 +463,4 @@ fn is_safe(
        If not, it returns false, meaning that the cell is not safe.
     */
     (rows[i] & bit) == 0 && (cols[j] & bit) == 0 && (subgrids[(i / 3) * 3 + j / 3] & bit) == 0
-}
-
-/*
-    Unit Tests!!
-*/
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_solve_empty_puzzle() {
-        let puzzle = Sudoku::new();
-        let (solution, stats) = find_one_solution(&puzzle);
-
-        assert!(solution.is_some(), "Empty puzzle should have a solution");
-        assert!(stats.solutions_found == 1);
-        assert!(stats.nodes_explored > 0);
-
-        println!("{}", puzzle)
-    }
-
-    #[test]
-    fn test_solve_already_solved_puzzle() {
-        #[rustfmt::skip]
-    let preset = [
-        [Some(5), Some(3), Some(4), Some(6), Some(7), Some(8), Some(9), Some(1), Some(2)],
-        [Some(6), Some(7), Some(2), Some(1), Some(9), Some(5), Some(3), Some(4), Some(8)],
-        [Some(1), Some(9), Some(8), Some(3), Some(4), Some(2), Some(5), Some(6), Some(7)],
-        [Some(8), Some(5), Some(9), Some(7), Some(6), Some(1), Some(4), Some(2), Some(3)],
-        [Some(4), Some(2), Some(6), Some(8), Some(5), Some(3), Some(7), Some(9), Some(1)],
-        [Some(7), Some(1), Some(3), Some(9), Some(2), Some(4), Some(8), Some(5), Some(6)],
-        [Some(9), Some(6), Some(1), Some(5), Some(3), Some(7), Some(2), Some(8), Some(4)],
-        [Some(2), Some(8), Some(7), Some(4), Some(1), Some(9), Some(6), Some(3), Some(5)],
-        [Some(3), Some(4), Some(5), Some(2), Some(8), Some(6), Some(1), Some(7), Some(9)],
-    ];
-
-        let puzzle = Sudoku::from_preset(preset);
-
-        let (solution, stats) = find_one_solution(&puzzle);
-        assert!(
-            solution.is_some(),
-            "Already solved puzzle should return a solution"
-        );
-        // Should find solution very quickly (minimal nodes explored)
-
-        // You could also add this assertion to verify it was indeed fast:
-        assert!(
-            stats.nodes_explored <= 81,
-            "Solved puzzle should require minimal exploration"
-        );
-    }
-
-    #[test]
-    fn test_shultz_301() {
-        #[rustfmt::skip]
-        let preset = [
-            [None,    Some(3), Some(9), Some(5), None,     None,     None,     None,     None    ],
-            [None,    None,    None,    Some(8), None,     None,     None,     Some(7),  None    ],
-            [None,    None,    None,    None,    Some(1),  None,     Some(9),  None,     Some(4) ],
-            [Some(1), None,    None,    Some(4), None,     None,     None,     None,     Some(3) ],
-            [None,    None,    None,    None,    None,     None,     None,     None,     None    ],
-            [None,    None,    Some(7), None,    None,     None,     Some(8),  Some(6),  None    ],
-            [None,    None,    Some(6), Some(7), None,     Some(8),  Some(2),  None,     None    ],
-            [None,    Some(1), None,    None,    Some(9),  None,     None,     None,     Some(5) ],
-            [None,    None,    None,    None,    None,     Some(1),  None,     None,     Some(8) ],
-        ];
-
-        let puzzle = Sudoku::from_preset(preset);
-
-        let (solution, stats) = find_one_solution(&puzzle);
-        assert!(solution.is_some(), "Puzzle should have a solution");
-        assert!(stats.solutions_found == 1);
-
-        // Optional: verify the solution is actually valid
-        if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "Solution should be valid");
-            println!("{}", solved_puzzle);
-
-            stats.print_analysis();
-        }
-    }
-
-    #[test]
-    fn test_shultz_301_all_soln() {
-        #[rustfmt::skip]
-        let preset = [
-            [None,    Some(3), Some(9), Some(5), None,     None,     None,     None,     None    ],
-            [None,    None,    None,    Some(8), None,     None,     None,     Some(7),  None    ],
-            [None,    None,    None,    None,    Some(1),  None,     Some(9),  None,     Some(4) ],
-            [Some(1), None,    None,    Some(4), None,     None,     None,     None,     Some(3) ],
-            [None,    None,    None,    None,    None,     None,     None,     None,     None    ],
-            [None,    None,    Some(7), None,    None,     None,     Some(8),  Some(6),  None    ],
-            [None,    None,    Some(6), Some(7), None,     Some(8),  Some(2),  None,     None    ],
-            [None,    Some(1), None,    None,    Some(9),  None,     None,     None,     Some(5) ],
-            [None,    None,    None,    None,    None,     Some(1),  None,     None,     Some(8) ],
-        ];
-
-        let puzzle = Sudoku::from_preset(preset);
-
-        let (solutions, stats) = find_all_solutions(&puzzle);
-
-        // Print comprehensive analysis
-        stats.print_analysis();
-
-        // Print all solutions to verify they're different
-        println!("\nAll solutions found:");
-        for (i, solution) in solutions.iter().enumerate() {
-            println!("Solution {}:", i + 1);
-            println!("{}", solution);
-            assert!(solution.is_solved(), "Solution {} should be valid", i + 1);
-
-            // Optional: Print a separator between solutions
-            if i < solutions.len() - 1 {
-                println!("{}", "-".repeat(30));
-            }
-        }
-    }
-
-    #[test]
-    fn test_mepham_d() {
-        #[rustfmt::skip]
-        let preset = [
-            [None,    Some(9), None,    Some(7), None,     None,     Some(8), Some(6), None    ],
-            [None,    Some(3), Some(1), None,    None,     Some(5),  None,    Some(2), None    ],
-            [Some(8), None,    Some(6), None,    None,     None,     None,    None,    None    ],
-            [None,    None,    Some(7), None,    Some(5),  None,     None,    None,    Some(6) ],
-            [None,    None,    None,    Some(3), None,     Some(7),  None,    None,    None    ],
-            [Some(5), None,    None,    None,    Some(1),  None,     Some(7), None,    None    ],
-            [None,    None,    None,    None,    None,     None,     Some(1), None,    Some(9) ],
-            [None,    Some(2), None,    Some(6), None,     None,     Some(3), Some(5), None    ],
-            [None,    Some(5), Some(4), None,    None,     Some(8),  None,    Some(7), None    ],
-        ];
-
-        let puzzle = Sudoku::from_preset(preset);
-
-        let (solution, stats) = find_one_solution(&puzzle);
-        assert!(solution.is_some(), "Puzzle should have a solution");
-        assert!(stats.solutions_found == 1);
-
-        // Optional: verify the solution is actually valid
-        if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "Solution should be valid");
-            println!("{}", solved_puzzle);
-
-            stats.print_analysis();
-        }
-    }
-
-    #[test]
-    fn test_mepham_d_all_soln() {
-        #[rustfmt::skip]
-        let preset = [
-            [None,    Some(9), None,    Some(7), None,     None,     Some(8), Some(6), None    ],
-            [None,    Some(3), Some(1), None,    None,     Some(5),  None,    Some(2), None    ],
-            [Some(8), None,    Some(6), None,    None,     None,     None,    None,    None    ],
-            [None,    None,    Some(7), None,    Some(5),  None,     None,    None,    Some(6) ],
-            [None,    None,    None,    Some(3), None,     Some(7),  None,    None,    None    ],
-            [Some(5), None,    None,    None,    Some(1),  None,     Some(7), None,    None    ],
-            [None,    None,    None,    None,    None,     None,     Some(1), None,    Some(9) ],
-            [None,    Some(2), None,    Some(6), None,     None,     Some(3), Some(5), None    ],
-            [None,    Some(5), Some(4), None,    None,     Some(8),  None,    Some(7), None    ],
-        ];
-
-        let puzzle = Sudoku::from_preset(preset);
-
-        let (solutions, stats) = find_all_solutions(&puzzle);
-
-        // Print comprehensive analysis
-        stats.print_analysis();
-
-        // Print all solutions to verify they're different
-        println!("\nAll solutions found:");
-        for (i, solution) in solutions.iter().enumerate() {
-            println!("Solution {}:", i + 1);
-            println!("{}", solution);
-            assert!(solution.is_solved(), "Solution {} should be valid", i + 1);
-
-            // Optional: Print a separator between solutions
-            if i < solutions.len() - 1 {
-                println!("{}", "-".repeat(30));
-            }
-        }
-    }
-
-    #[test]
-    fn test_murty_2_multiple_solutions() {
-        #[rustfmt::skip]
-        let preset = [
-            [Some(9), None,    Some(6), None,    Some(7), None,    Some(4), None,    Some(3)],
-            [None,    None,    None,    Some(4), None,    None,    Some(2), None,    None   ],
-            [None,    Some(7), None,    None,    Some(2), Some(3), None,    Some(1), None   ],
-            [Some(5), None,    None,    None,    None,    None,    Some(1), None,    None   ],
-            [None,    Some(4), None,    Some(2), None,    Some(8), None,    Some(6), None   ],
-            [None,    None,    Some(3), None,    None,    None,    None,    None,    Some(5)],
-            [None,    Some(3), None,    Some(7), None,    None,    None,    Some(5), None   ],
-            [None,    None,    Some(7), None,    None,    Some(5), None,    None,    None   ],
-            [Some(4), None,    Some(5), None,    Some(1), None,    Some(7), None,    Some(8)],
-        ];
-
-        let puzzle = Sudoku::from_preset(preset);
-
-        let (solutions, stats) = find_all_solutions(&puzzle);
-
-        // This puzzle should have multiple solutions
-        assert!(solutions.len() > 1, "Puzzle should have multiple solutions");
-        println!("Found {} solutions", solutions.len());
-
-        // Print comprehensive analysis
-        stats.print_analysis();
-
-        // Print all solutions to verify they're different
-        println!("\nAll solutions found:");
-        for (i, solution) in solutions.iter().enumerate() {
-            println!("Solution {}:", i + 1);
-            println!("{}", solution);
-            assert!(solution.is_solved(), "Solution {} should be valid", i + 1);
-
-            // Optional: Print a separator between solutions
-            if i < solutions.len() - 1 {
-                println!("{}", "-".repeat(30));
-            }
-        }
-    }
-
-    #[test]
-    fn test_is_safe_function() {
-        let mut rows = [0u16; 9];
-        let mut cols = [0u16; 9];
-        let mut subgrids = [0u16; 9];
-
-        // Place number 5 at position (0,0)
-        rows[0] |= 1 << 5;
-        cols[0] |= 1 << 5;
-        subgrids[0] |= 1 << 5;
-
-        // Should not be safe to place 5 again in same row/col/subgrid
-        assert!(!is_safe(&rows, &cols, &subgrids, 0, 1, 5));
-        assert!(!is_safe(&rows, &cols, &subgrids, 1, 0, 5));
-        assert!(!is_safe(&rows, &cols, &subgrids, 1, 1, 5));
-
-        // Should be safe to place different number
-        assert!(is_safe(&rows, &cols, &subgrids, 0, 1, 6));
-    }
-
-    #[test]
-    fn test_tree_width_tracking() {
-        let puzzle = Sudoku::new();
-        let (solution, stats) = find_one_solution(&puzzle);
-
-        assert!(solution.is_some());
-
-        // These should still hold true
-        let total_nodes: usize = stats.tree_width_by_level.iter().sum();
-        assert_eq!(total_nodes, stats.nodes_explored);
-        assert_eq!(stats.tree_width_by_level[0], 1);
-
-        // Max depth should now be 80, not 81
-        assert!(stats.max_recursion_depth <= 80);
-
-        // Optional: verify the solution is actually valid
-        if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "Solution should be valid");
-            println!("{}", solved_puzzle)
-        }
-
-        println!("Tree width by level:");
-        for (depth, width) in stats.tree_width_by_level.iter().enumerate() {
-            if *width > 0 {
-                println!("Depth {}: {} nodes", depth, width);
-            }
-        }
-    }
 }

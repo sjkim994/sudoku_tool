@@ -1,7 +1,7 @@
 mod core;
 
-use core::bf_solver::{SolverStats, find_all_solutions, find_one_solution};
 use core::Sudoku;
+use core::bf_solver::{SolverStats, find_all_solutions, find_one_solution};
 
 use std::fs;
 use std::fs::File;
