@@ -210,8 +210,8 @@ pub fn find_one_solution_rand(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) 
     row_arr.shuffle(&mut rand::rng());
     col_arr.shuffle(&mut rand::rng());
 
-    println!("{:?}", row_arr);
-    println!("{:?}", col_arr);
+    // println!("{:?}", row_arr);
+    // println!("{:?}", col_arr);
 
     find_one_solution_ord(sudoku, Some(row_arr), Some(col_arr))
 }
@@ -335,8 +335,8 @@ fn solve_recursive(
     if row_idx == 9 {
         let mut solution_sudoku = Sudoku::new();
         // Copy solution to Sudoku struct
-        for row in 0..9 {
-            for col in 0..9 {
+        for (row, _) in board.iter().enumerate().take(9) {
+            for (col, _) in board.iter().enumerate().take(9) {
                 solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
             }
         }
@@ -373,8 +373,8 @@ fn solve_recursive(
     if r_idx == 9 {
         let mut solution_sudoku = Sudoku::new();
         // Copy solution to Sudoku struct
-        for row in 0..9 {
-            for col in 0..9 {
+        for (row, _) in board.iter().enumerate().take(9) {
+            for (col, _) in board.iter().enumerate().take(9) {
                 solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
             }
         }

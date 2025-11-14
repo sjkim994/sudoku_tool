@@ -9,3 +9,7 @@ clap = { version = "4.5.51", features = ["derive"] }
 csv = "1.4.0"
 rand = "0.9.2"
 serde = { version = "1.0.228", features = ["derive"]}
+
+[[bin]]
+name = "rand_ord_experiment"
+path = "src/bin/rand_ord_experiment.rs"

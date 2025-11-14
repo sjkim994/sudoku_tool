@@ -7,6 +7,17 @@ use std::path::PathBuf;
 use sudoku_tool::core::solvers::bf_solver::{SolverStats, find_one_solution};
 use sudoku_tool::core::sudoku::Sudoku;
 
+/*
+    CLI Command format:
+        Required arguments: -i for input path and -o for output path
+
+        Optional arguments: 
+            -l for the maximum number of puzzles to process
+            -s for the sample (process every nth puzzle)
+            -seed for a random seed for sampling
+            -p show progress every n puzzles
+
+*/
 #[derive(Parser)]
 #[command(name = "Sudoku Solver Processor")]
 #[command(about = "Process Sudoku puzzles and collect solver statistics")]
@@ -95,7 +106,7 @@ fn process_puzzles(cli: &Cli) -> Result<(), Box<dyn Error>> {
         if cli.sample > 1 {
             if let Some(ref mut rng) = rng {
                 use rand::Rng;
-                if !rng.gen_ratio(1, cli.sample as u32) {
+                if !rng.random_ratio(1, cli.sample as u32) {
                     continue;
                 }
             } else {

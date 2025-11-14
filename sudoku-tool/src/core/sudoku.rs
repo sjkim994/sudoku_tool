@@ -10,6 +10,13 @@ pub struct Sudoku {
     pub grid: Array2D<BTreeSet<u8>>,
 }
 
+
+impl Default for Sudoku {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Sudoku {
     pub fn new() -> Self {
         Sudoku {
