@@ -11,10 +11,10 @@ use sudoku_tool::core::sudoku::Sudoku;
     CLI Command format:
         Required arguments: -i for input path and -o for output path
 
-        Optional arguments: 
+        Optional arguments:
             -l for the maximum number of puzzles to process
-            -s for the sample (process every nth puzzle)
-            -seed for a random seed for sampling
+            -n for the sample (process every nth puzzle)
+            -s for a random seed for sampling
             -p show progress every n puzzles
 
 */
@@ -35,11 +35,11 @@ struct Cli {
     limit: usize,
 
     /// Sampling rate (process every Nth puzzle)
-    #[arg(short, long, default_value_t = 1)]
+    #[arg(short = 'n', long, default_value_t = 1)]
     sample: usize,
 
     /// Random seed for sampling (optional)
-    #[arg(long)]
+    #[arg(short, long)]
     seed: Option<u64>,
 
     /// Show progress every N puzzles
@@ -76,7 +76,7 @@ struct OutputStats {
 fn process_puzzles(cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut rdr = Reader::from_path(&cli.input)?;
     let mut wtr = Writer::from_path(&cli.output)?;
-    
+
     // Write header
     wtr.serialize(OutputStats {
         id: 0,
@@ -90,17 +90,17 @@ fn process_puzzles(cli: &Cli) -> Result<(), Box<dyn Error>> {
         is_solved: false,
         leaves: 0,
     })?;
-    
+
     let mut processed = 0;
     let mut total_time = 0u128;
     let mut total_nodes = 0usize;
-    
+
     // Initialize random number generator if seed is provided
     let mut rng = cli.seed.map(|seed| {
         use rand::SeedableRng;
         rand::rngs::StdRng::seed_from_u64(seed)
     });
-    
+
     for (i, result) in rdr.deserialize().enumerate() {
         // Apply sampling
         if cli.sample > 1 {
@@ -115,22 +115,33 @@ fn process_puzzles(cli: &Cli) -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-        
+
         // Apply limit
         if cli.limit > 0 && processed >= cli.limit {
             break;
         }
-        
+
         let record: InputPuzzle = result?;
         processed += 1;
-        
+
         // Progress reporting
         if processed % cli.progress == 0 {
-            let avg_time = if processed > 0 { total_time / processed as u128 } else { 0 };
-            let avg_nodes = if processed > 0 { total_nodes / processed } else { 0 };
-            println!("Processed {} puzzles (avg: {} ms, {} nodes)", processed, avg_time, avg_nodes);
+            let avg_time = if processed > 0 {
+                total_time / processed as u128
+            } else {
+                0
+            };
+            let avg_nodes = if processed > 0 {
+                total_nodes / processed
+            } else {
+                0
+            };
+            println!(
+                "Processed {} puzzles (avg: {} ms, {} nodes)",
+                processed, avg_time, avg_nodes
+            );
         }
-        
+
         // Convert string to Sudoku
         let puzzle = match Sudoku::from_string(&record.puzzle) {
             Ok(p) => p,
@@ -139,12 +150,12 @@ fn process_puzzles(cli: &Cli) -> Result<(), Box<dyn Error>> {
                 continue;
             }
         };
-        
+
         // Solve
         let (solution, stats) = find_one_solution(&puzzle);
         total_time += stats.search_duration.as_millis();
         total_nodes += stats.nodes_explored;
-        
+
         // Write results
         wtr.serialize(OutputStats {
             id: record.id,
@@ -158,34 +169,50 @@ fn process_puzzles(cli: &Cli) -> Result<(), Box<dyn Error>> {
             is_solved: solution.is_some(),
             leaves: stats.leaves,
         })?;
-        
+
         // Flush periodically to avoid data loss
         if processed % 100 == 0 {
             wtr.flush()?;
         }
     }
-    
+
     println!("Completed! Processed {} puzzles total", processed);
-    println!("Final averages: {} ms/puzzle, {} nodes/puzzle", 
-             total_time / processed.max(1) as u128,
-             total_nodes / processed.max(1));
-    
+    println!(
+        "Final averages: {} ms/puzzle, {} nodes/puzzle",
+        total_time / processed.max(1) as u128,
+        total_nodes / processed.max(1)
+    );
+
     Ok(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    
+
     println!("Sudoku Solver Processor");
     println!("Input: {:?}", cli.input);
     println!("Output: {:?}", cli.output);
-    println!("Limit: {}", if cli.limit > 0 { cli.limit.to_string() } else { "all".to_string() });
-    println!("Sampling: {}", if cli.sample > 1 { format!("1/{}", cli.sample) } else { "all".to_string() });
+    println!(
+        "Limit: {}",
+        if cli.limit > 0 {
+            cli.limit.to_string()
+        } else {
+            "all".to_string()
+        }
+    );
+    println!(
+        "Sampling: {}",
+        if cli.sample > 1 {
+            format!("1/{}", cli.sample)
+        } else {
+            "all".to_string()
+        }
+    );
     if let Some(seed) = cli.seed {
         println!("Random seed: {}", seed);
     }
     println!("Progress reporting: every {} puzzles", cli.progress);
     println!("{}", "=".repeat(50));
-    
+
     process_puzzles(&cli)
 }

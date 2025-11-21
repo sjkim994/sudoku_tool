@@ -57,23 +57,27 @@ pub enum RangeType {
 impl PreemptiveSet {
     fn new(numbers: BTreeSet<u8>, cells: Vec<(usize, usize)>) -> Self {
         let mut ranges = Vec::new();
-        
+
         // Determine which ranges this set applies to
         if let Some(row) = Self::get_common_row(&cells) {
             ranges.push(RangeType::Row(row));
         }
-        
+
         if let Some(col) = Self::get_common_column(&cells) {
             ranges.push(RangeType::Column(col));
         }
-        
+
         if let Some(box_idx) = Self::get_common_box(&cells) {
             ranges.push(RangeType::Box(box_idx));
         }
-        
-        PreemptiveSet { numbers, cells, ranges }
+
+        PreemptiveSet {
+            numbers,
+            cells,
+            ranges,
+        }
     }
-    
+
     fn get_common_row(cells: &[(usize, usize)]) -> Option<usize> {
         let first_row = cells[0].0;
         if cells.iter().all(|&(r, _)| r == first_row) {
@@ -82,7 +86,7 @@ impl PreemptiveSet {
             None
         }
     }
-    
+
     fn get_common_column(cells: &[(usize, usize)]) -> Option<usize> {
         let first_col = cells[0].1;
         if cells.iter().all(|&(_, c)| c == first_col) {
@@ -91,19 +95,21 @@ impl PreemptiveSet {
             None
         }
     }
-    
+
     fn get_common_box(cells: &[(usize, usize)]) -> Option<usize> {
         let first_box = (cells[0].0 / 3) * 3 + (cells[0].1 / 3);
-        if cells.iter().all(|&(r, c)| (r / 3) * 3 + (c / 3) == first_box) {
+        if cells
+            .iter()
+            .all(|&(r, c)| (r / 3) * 3 + (c / 3) == first_box)
+        {
             Some(first_box)
         } else {
             None
         }
     }
-    
+
     // Check if this preemptive set applies to a specific range
     fn applies_to_range(&self, range_type: &RangeType) -> bool {
         self.ranges.contains(range_type)
     }
 }
-

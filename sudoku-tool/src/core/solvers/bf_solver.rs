@@ -197,70 +197,69 @@ impl SolverStats {
     }
 }
 
-// Finds a solution to a Sudoku puzzle
+#[derive(Debug, Clone)]
+pub enum SearchStrategy {
+    Default,      // Left-right, top-down (0,0) to (8,8)
+    RowColRandom, // Random row and column ordering
+    CellRandom,   // Random cell ordering (your new approach)
+    CustomRowCol {
+        // Custom row/column ordering
+        row_order: [usize; 9],
+        col_order: [usize; 9],
+    },
+    CustomCell {
+        // Custom cell ordering
+        cell_order: Vec<(usize, usize)>,
+    },
+}
+
+pub fn generate_cell_order_from_row_col(
+    row_order: &[usize; 9],
+    col_order: &[usize; 9],
+) -> Vec<(usize, usize)> {
+    let mut cells = Vec::with_capacity(81);
+    for &r in row_order {
+        for &c in col_order {
+            cells.push((r, c));
+        }
+    }
+    cells
+}
+
+// Wrapper functions for easier tests
 pub fn find_one_solution(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
-    find_one_solution_ord(sudoku, None, None)
+    find_one_solution_strategy(sudoku, SearchStrategy::Default)
 }
-
-pub fn find_one_solution_rand(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
-    // Generate random sequence of 0-8
-    let mut row_arr: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let mut col_arr: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-
-    row_arr.shuffle(&mut rand::rng());
-    col_arr.shuffle(&mut rand::rng());
-
-    // println!("{:?}", row_arr);
-    // println!("{:?}", col_arr);
-
-    find_one_solution_ord(sudoku, Some(row_arr), Some(col_arr))
+pub fn find_one_solution_rand_rowcol_order(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
+    find_one_solution_strategy(sudoku, SearchStrategy::RowColRandom)
 }
-
-// Finds a solution to a Sudoku puzzle with a random order
-pub fn find_one_solution_ord(
+pub fn find_one_solution_rand_cell_order(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
+    find_one_solution_strategy(sudoku, SearchStrategy::CellRandom)
+}
+pub fn find_one_solution_custom_rowcol_order(
     sudoku: &Sudoku,
-    row_order: Option<[usize; 9]>,
-    col_order: Option<[usize; 9]>,
+    row_order: [usize; 9],
+    col_order: [usize; 9],
 ) -> (Option<Sudoku>, SolverStats) {
-    // Initialize stat recorders
-    let start_time = Instant::now();
-    let mut stats = SolverStats::default();
-    let mut solutions = Vec::<Sudoku>::new(); // We'll use this to get the first solution
-
-    // Instantiates board, row, col, and subgrid data structures
-    let mut board = [[0u8; 9]; 9];
-    let (mut rows, mut cols, mut subgrids) = ([0u16; 9], [0u16; 9], [0u16; 9]);
-
-    initialize_from_sudoku(sudoku, &mut board, &mut rows, &mut cols, &mut subgrids);
-
-    // Use provided order or default to 0..8
-    let row_order = row_order.unwrap_or([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    let col_order = col_order.unwrap_or([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-
-    solve_recursive(
-        &mut board,
-        &mut rows,
-        &mut cols,
-        &mut subgrids,
-        &row_order,
-        &col_order,
-        0,
-        0,
-        0,
-        &mut stats,
-        &mut solutions,
-        false,
-    );
-
-    let solution = solutions.into_iter().next(); // Take the first solution if any
-
-    stats.solutions_found = if solution.is_some() { 1 } else { 0 };
-    stats.search_duration = start_time.elapsed();
-    (solution, stats)
+    find_one_solution_strategy(
+        sudoku, 
+        SearchStrategy::CustomRowCol { row_order, col_order }
+    )
+}
+pub fn find_one_solution_custom_cell_order(
+    sudoku: &Sudoku,
+    cell_order: &[(usize, usize)],
+) -> (Option<Sudoku>, SolverStats) {
+    find_one_solution_strategy(
+        sudoku, 
+        SearchStrategy::CustomCell { cell_order: cell_order.to_vec() }
+    )
 }
 
-// Finds all solutions to a Sudoku puzzle
-pub fn find_all_solutions(sudoku: &Sudoku) -> (Vec<Sudoku>, SolverStats) {
+pub fn find_one_solution_strategy(
+    sudoku: &Sudoku,
+    strategy: SearchStrategy,
+) -> (Option<Sudoku>, SolverStats) {
     // Initialize stat recorders and solutions vec
     let start_time = Instant::now();
     let mut stats = SolverStats::default();
@@ -273,28 +272,93 @@ pub fn find_all_solutions(sudoku: &Sudoku) -> (Vec<Sudoku>, SolverStats) {
     // Initializes from original puzzle and it is read-only
     initialize_from_sudoku(sudoku, &mut board, &mut rows, &mut cols, &mut subgrids);
 
-    let row_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let col_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    // Generate cell order based on strategy
+    let cell_order = match strategy {
+        SearchStrategy::Default => generate_cell_order_from_row_col(
+            &[0, 1, 2, 3, 4, 5, 6, 7, 8],
+            &[0, 1, 2, 3, 4, 5, 6, 7, 8],
+        ),
+        SearchStrategy::RowColRandom => {
+            let mut row_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            let mut col_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            row_arr.shuffle(&mut rand::rng());
+            col_arr.shuffle(&mut rand::rng());
+            generate_cell_order_from_row_col(&row_arr, &col_arr)
+        }
+        SearchStrategy::CellRandom => {
+            let mut cells: Vec<(usize, usize)> = Vec::with_capacity(81);
+            for i in 0..9 {
+                for j in 0..9 {
+                    cells.push((i, j));
+                }
+            }
+            cells.shuffle(&mut rand::rng());
+            cells
+        }
+        SearchStrategy::CustomRowCol {
+            row_order,
+            col_order,
+        } => generate_cell_order_from_row_col(&row_order, &col_order),
+        SearchStrategy::CustomCell { cell_order } => cell_order,
+    };
 
-    solve_recursive(
+    // Call the unified recursive solver with cell order
+    solve_recursive_cell_order(
         &mut board,
         &mut rows,
         &mut cols,
         &mut subgrids,
-        &row_order,
-        &col_order,
-        0,
+        &cell_order,
         0,
         0,
         &mut stats,
         &mut solutions,
-        true,
+        false,
     );
 
-    stats.solutions_found = solutions.len();
+    let solution = solutions.into_iter().next();
+
+    stats.solutions_found = if solution.is_some() { 1 } else { 0 };
     stats.search_duration = start_time.elapsed();
-    (solutions, stats)
+    (solution, stats)
 }
+
+// Finds all solutions to a Sudoku puzzle
+// pub fn find_all_solutions(sudoku: &Sudoku) -> (Vec<Sudoku>, SolverStats) {
+//     // Initialize stat recorders and solutions vec
+//     let start_time = Instant::now();
+//     let mut stats = SolverStats::default();
+//     let mut solutions = Vec::new();
+
+//     // Instantiates board, row, col, and subgrid data structures
+//     let mut board = [[0u8; 9]; 9];
+//     let (mut rows, mut cols, mut subgrids) = ([0u16; 9], [0u16; 9], [0u16; 9]);
+
+//     // Initializes from original puzzle and it is read-only
+//     initialize_from_sudoku(sudoku, &mut board, &mut rows, &mut cols, &mut subgrids);
+
+//     let row_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+//     let col_order: [usize; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+//     solve_recursive(
+//         &mut board,
+//         &mut rows,
+//         &mut cols,
+//         &mut subgrids,
+//         &row_order,
+//         &col_order,
+//         0,
+//         0,
+//         0,
+//         &mut stats,
+//         &mut solutions,
+//         true,
+//     );
+
+//     stats.solutions_found = solutions.len();
+//     stats.search_duration = start_time.elapsed();
+//     (solutions, stats)
+// }
 
 // Initializes board, row, col, and subgrid data structures
 fn initialize_from_sudoku(
@@ -317,75 +381,44 @@ fn initialize_from_sudoku(
     }
 }
 
-fn solve_recursive(
+fn solve_recursive_cell_order(
     board: &mut [[u8; 9]; 9],
     rows: &mut [u16; 9],
     cols: &mut [u16; 9],
     subgrids: &mut [u16; 9],
-    row_order: &[usize; 9],
-    col_order: &[usize; 9],
-    row_idx: usize, // Index into row_order from 0
-    col_idx: usize, // Index into col_order from 0
+    cell_order: &[(usize, usize)],
+    cell_idx: usize,
     depth: usize,
     stats: &mut SolverStats,
     solutions: &mut Vec<Sudoku>,
     find_all: bool,
 ) {
-    // Check if board is filled: REDUNDANT, MAYBE REFACTOR??
-    if row_idx == 9 {
-        let mut solution_sudoku = Sudoku::new();
-        // Copy solution to Sudoku struct
-        for (row, _) in board.iter().enumerate().take(9) {
-            for (col, _) in board.iter().enumerate().take(9) {
-                solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
-            }
-        }
-
-        solutions.push(solution_sudoku);
-
-        stats.leaves += 1; // Solution leaf
-        return;
-    }
-
-    // Mutable indices for row order
-    let (mut r_idx, mut c_idx) = (row_idx, col_idx);
-    // Convert ordering indices to board coordinates
-    let mut i = row_order[r_idx];
-    let mut j = col_order[c_idx];
-
     // Find next empty cell
-    while r_idx < 9 && board[i][j] != 0 {
-        c_idx += 1;
-
-        if c_idx == 9 {
-            // if at end of row, jump to start of next row
-            c_idx = 0;
-            r_idx += 1;
+    let mut current_idx = cell_idx;
+    while current_idx < 81 {
+        let (i, j) = cell_order[current_idx];
+        if board[i][j] == 0 {
+            break;
         }
-
-        if r_idx < 9 {
-            i = row_order[r_idx];
-            j = col_order[c_idx];
-        }
+        current_idx += 1;
     }
 
     // Check if board is filled
-    if r_idx == 9 {
+    if current_idx == 81 {
         let mut solution_sudoku = Sudoku::new();
-        // Copy solution to Sudoku struct
-        for (row, _) in board.iter().enumerate().take(9) {
-            for (col, _) in board.iter().enumerate().take(9) {
+        for row in 0..9 {
+            for col in 0..9 {
                 solution_sudoku.set_cell(row, col, board[row][col]).unwrap();
             }
         }
-
         solutions.push(solution_sudoku);
-
-        stats.leaves += 1; // Solution leaf
+        stats.leaves += 1;
         return;
     }
 
-    // Update depth and node stats
+    let (i, j) = cell_order[current_idx];
+
+    // Update stats
     stats.nodes_explored += 1;
     stats.max_recursion_depth = stats.max_recursion_depth.max(depth);
     stats.tree_width_by_level[depth] += 1;
@@ -405,19 +438,13 @@ fn solve_recursive(
             cols[j] |= bit;
             subgrids[(i / 3) * 3 + j / 3] |= bit;
 
-            // Calculate next cell to call recursively
-            let next_c_idx = if c_idx == 8 { 0 } else { c_idx + 1 }; // if at the end of the row, move to beginning of next row
-            let next_r_idx = if c_idx == 8 { r_idx + 1 } else { r_idx };
-
-            solve_recursive(
+            solve_recursive_cell_order(
                 board,
                 rows,
                 cols,
                 subgrids,
-                row_order,
-                col_order,
-                next_r_idx,
-                next_c_idx,
+                cell_order,
+                current_idx + 1,
                 depth + 1,
                 stats,
                 solutions,
