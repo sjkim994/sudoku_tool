@@ -4,5 +4,9 @@ pub mod core {
         // Add other solver modules as they become public
     }
     pub mod sudoku;
+    pub mod transformers {
+        pub mod reflections;
+        pub mod rotations;
+    }
     // Add other core modules as needed
 }

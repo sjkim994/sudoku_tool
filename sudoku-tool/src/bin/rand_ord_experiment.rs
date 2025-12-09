@@ -5,7 +5,8 @@ use std::error::Error;
 use std::path::PathBuf;
 
 use sudoku_tool::core::solvers::bf_solver::{
-    SolverStats, find_one_solution, find_one_solution_rand_rowcol_order,
+    SolverStats, find_one_solution, find_one_solution_rand_cell_order,
+    find_one_solution_rand_rowcol_order,
 };
 use sudoku_tool::core::sudoku::Sudoku;
 

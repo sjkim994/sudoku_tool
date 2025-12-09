@@ -242,8 +242,11 @@ pub fn find_one_solution_custom_rowcol_order(
     col_order: [usize; 9],
 ) -> (Option<Sudoku>, SolverStats) {
     find_one_solution_strategy(
-        sudoku, 
-        SearchStrategy::CustomRowCol { row_order, col_order }
+        sudoku,
+        SearchStrategy::CustomRowCol {
+            row_order,
+            col_order,
+        },
     )
 }
 pub fn find_one_solution_custom_cell_order(
@@ -251,8 +254,10 @@ pub fn find_one_solution_custom_cell_order(
     cell_order: &[(usize, usize)],
 ) -> (Option<Sudoku>, SolverStats) {
     find_one_solution_strategy(
-        sudoku, 
-        SearchStrategy::CustomCell { cell_order: cell_order.to_vec() }
+        sudoku,
+        SearchStrategy::CustomCell {
+            cell_order: cell_order.to_vec(),
+        },
     )
 }
 

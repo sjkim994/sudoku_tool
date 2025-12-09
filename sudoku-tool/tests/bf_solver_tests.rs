@@ -60,20 +60,31 @@ fn test_shultz_301_all_strategies() {
     let strategies = [
         ("Default", SearchStrategy::Default),
         ("Row/Col Random", SearchStrategy::RowColRandom),
-        ("Custom Row/Col", SearchStrategy::CustomRowCol { 
-            row_order: [2, 5, 1, 6, 3, 7, 4, 8, 0], 
-            col_order: [6, 8, 3, 4, 2, 0, 7, 5, 1] 
-        }),
+        (
+            "Custom Row/Col",
+            SearchStrategy::CustomRowCol {
+                row_order: [2, 5, 1, 6, 3, 7, 4, 8, 0],
+                col_order: [6, 8, 3, 4, 2, 0, 7, 5, 1],
+            },
+        ),
     ];
 
     for (name, strategy) in strategies {
         println!("Testing {} strategy...", name);
         let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone());
-        assert!(solution.is_some(), "{} strategy should find a solution", name);
+        assert!(
+            solution.is_some(),
+            "{} strategy should find a solution",
+            name
+        );
         assert!(stats.solutions_found == 1);
 
         if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "{} strategy solution should be valid", name);
+            assert!(
+                solved_puzzle.is_solved(),
+                "{} strategy solution should be valid",
+                name
+            );
             println!("{} strategy: {} nodes explored", name, stats.nodes_explored);
         }
     }
@@ -100,26 +111,37 @@ fn test_cell_order_strategies_simple() {
     // Test cell-based strategies on simple puzzle
     let strategies = [
         ("Cell Random", SearchStrategy::CellRandom),
-        ("Custom Cell", SearchStrategy::CustomCell { 
-            cell_order: {
-                let mut cells = Vec::new();
-                for i in (0..9).rev() {
-                    for j in (0..9).rev() {
-                        cells.push((i, j));
+        (
+            "Custom Cell",
+            SearchStrategy::CustomCell {
+                cell_order: {
+                    let mut cells = Vec::new();
+                    for i in (0..9).rev() {
+                        for j in (0..9).rev() {
+                            cells.push((i, j));
+                        }
                     }
-                }
-                cells
-            }
-        }),
+                    cells
+                },
+            },
+        ),
     ];
 
     for (name, strategy) in strategies {
         println!("Testing {} strategy on simple puzzle...", name);
         let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone());
-        assert!(solution.is_some(), "{} strategy should find a solution for simple puzzle", name);
-        
+        assert!(
+            solution.is_some(),
+            "{} strategy should find a solution for simple puzzle",
+            name
+        );
+
         if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "{} strategy solution should be valid", name);
+            assert!(
+                solved_puzzle.is_solved(),
+                "{} strategy solution should be valid",
+                name
+            );
             println!("{} strategy: {} nodes explored", name, stats.nodes_explored);
         }
     }
@@ -128,13 +150,16 @@ fn test_cell_order_strategies_simple() {
 #[test]
 fn test_cell_order_generation() {
     // Test that cell order generation works correctly
-    let cell_order = generate_cell_order_from_row_col(&[0, 1, 2, 3, 4, 5, 6, 7, 8], &[0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    
+    let cell_order = generate_cell_order_from_row_col(
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8],
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8],
+    );
+
     assert_eq!(cell_order.len(), 81, "Cell order should have 81 elements");
     assert_eq!(cell_order[0], (0, 0), "First cell should be (0, 0)");
     assert_eq!(cell_order[1], (0, 1), "Second cell should be (0, 1)");
     assert_eq!(cell_order[80], (8, 8), "Last cell should be (8, 8)");
-    
+
     println!("Cell order generation test passed!");
 }
 
@@ -158,7 +183,7 @@ fn test_wrapper_functions_fast() {
     // Test the fast wrapper functions (excluding random cell order)
     let (solution1, _) = find_one_solution(&puzzle);
     assert!(solution1.is_some(), "Default wrapper should work");
-    
+
     let (solution2, _) = find_one_solution_rand_rowcol_order(&puzzle);
     assert!(solution2.is_some(), "Row/Col random wrapper should work");
 
@@ -169,16 +194,22 @@ fn test_wrapper_functions_fast() {
     assert!(solution3.is_some(), "Custom row/col wrapper should work");
 
     // Test custom cell wrapper (non-random)
-    let cell_order: Vec<(usize, usize)> = (0..9)
-        .flat_map(|i| (0..9).map(move |j| (i, j)))
-        .collect();
+    let cell_order: Vec<(usize, usize)> =
+        (0..9).flat_map(|i| (0..9).map(move |j| (i, j))).collect();
     let (solution4, _) = find_one_solution_custom_cell_order(&puzzle, &cell_order);
     assert!(solution4.is_some(), "Custom cell wrapper should work");
 
     // Verify all solutions are valid
-    for (i, solution) in [solution1, solution2, solution3, solution4].iter().enumerate() {
+    for (i, solution) in [solution1, solution2, solution3, solution4]
+        .iter()
+        .enumerate()
+    {
         if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "Solution {} should be valid", i + 1);
+            assert!(
+                solved_puzzle.is_solved(),
+                "Solution {} should be valid",
+                i + 1
+            );
         }
     }
 
@@ -206,10 +237,16 @@ fn test_wrapper_function_random_cell_order() {
     println!("Testing random cell order wrapper (this may take a while)...");
     let (solution, stats) = find_one_solution_rand_cell_order(&puzzle);
     assert!(solution.is_some(), "Random cell order wrapper should work");
-    
+
     if let Some(solved_puzzle) = solution {
-        assert!(solved_puzzle.is_solved(), "Random cell order solution should be valid");
-        println!("Random cell order wrapper succeeded with {} nodes explored", stats.nodes_explored);
+        assert!(
+            solved_puzzle.is_solved(),
+            "Random cell order solution should be valid"
+        );
+        println!(
+            "Random cell order wrapper succeeded with {} nodes explored",
+            stats.nodes_explored
+        );
     }
 }
 
@@ -236,7 +273,10 @@ fn test_mepham_d() {
 
     if let Some(solved_puzzle) = solution {
         assert!(solved_puzzle.is_solved(), "Solution should be valid");
-        println!("Mepham D solved with {} nodes explored", stats.nodes_explored);
+        println!(
+            "Mepham D solved with {} nodes explored",
+            stats.nodes_explored
+        );
     }
 }
 
@@ -277,7 +317,10 @@ fn test_tree_width_tracking() {
         assert!(solved_puzzle.is_solved(), "Solution should be valid");
     }
 
-    println!("Tree width tracking test passed with {} total nodes", stats.nodes_explored);
+    println!(
+        "Tree width tracking test passed with {} total nodes",
+        stats.nodes_explored
+    );
 }
 
 #[test]
@@ -301,7 +344,7 @@ fn test_strategy_performance_comparison() {
     // First, verify the puzzle is valid and solvable with default strategy
     println!("\n=== Verifying puzzle is solvable ===");
     let (default_solution, default_stats) = find_one_solution(&puzzle);
-    
+
     if default_solution.is_none() {
         println!("ERROR: Puzzle is not solvable with default strategy!");
         println!("Puzzle:");
@@ -310,7 +353,10 @@ fn test_strategy_performance_comparison() {
     }
 
     println!("Puzzle verified as solvable with default strategy");
-    println!("Default: {} nodes, {:?}", default_stats.nodes_explored, default_stats.search_duration);
+    println!(
+        "Default: {} nodes, {:?}",
+        default_stats.nodes_explored, default_stats.search_duration
+    );
 
     let strategies = [
         ("Default", SearchStrategy::Default),
@@ -321,17 +367,24 @@ fn test_strategy_performance_comparison() {
     for (name, strategy) in strategies {
         println!("Testing {} strategy...", name);
         let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone());
-        
+
         if solution.is_none() {
             println!("ERROR: {} strategy failed to solve the puzzle!", name);
             println!("This suggests a bug in the strategy implementation");
             panic!("{} strategy failed", name);
         }
-        
-        println!("{}: {} nodes, {:?}", name, stats.nodes_explored, stats.search_duration);
-        
+
+        println!(
+            "{}: {} nodes, {:?}",
+            name, stats.nodes_explored, stats.search_duration
+        );
+
         if let Some(solved_puzzle) = solution {
-            assert!(solved_puzzle.is_solved(), "{} strategy solution should be valid", name);
+            assert!(
+                solved_puzzle.is_solved(),
+                "{} strategy solution should be valid",
+                name
+            );
         }
     }
 }
