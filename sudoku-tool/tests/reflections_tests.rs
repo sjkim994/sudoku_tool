@@ -99,7 +99,7 @@ fn test_reflect_horizontal_single_cell() {
 
     // Allow for visual check
     println!("{}", sudoku);
-    println!("{}", reflected);    
+    println!("{}", reflected);
 
     // Value at (0,0) should move to (0,8) after horizontal reflection
     assert_eq!(sudoku.get_solved_value(0, 0), Some(5));
@@ -189,7 +189,7 @@ fn test_reflect_anti_diagonal_single_cell() {
 
     // Allow for visual check
     println!("{}", sudoku);
-    println!("{}", reflected);    
+    println!("{}", reflected);
 
     // Value at (0,2) should move to (6,8) after anti-diagonal reflection
     // (0,2) -> (8-2, 8-0) = (6,8)

@@ -5,7 +5,7 @@ use std::path::Path;
 
 use array2d::Array2D;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Sudoku {
     pub grid: Array2D<BTreeSet<u8>>,
 }

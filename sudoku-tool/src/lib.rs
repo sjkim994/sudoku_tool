@@ -6,6 +6,7 @@ pub mod core {
     pub mod sudoku;
     pub mod transformers {
         pub mod reflections;
+        pub mod relabeling;
         pub mod rotations;
     }
     // Add other core modules as needed
