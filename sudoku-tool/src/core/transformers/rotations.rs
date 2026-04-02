@@ -1,6 +1,6 @@
 use crate::core::sudoku::Sudoku;
 
-/// Rotate a Sudoku puzzle 90 degrees clockwise
+// Rotate a Sudoku puzzle 90 degrees clockwise
 pub fn rotate_90(sudoku: &Sudoku) -> Sudoku {
     let mut new_sudoku = Sudoku::new();
 
@@ -20,7 +20,7 @@ pub fn rotate_90(sudoku: &Sudoku) -> Sudoku {
     new_sudoku
 }
 
-/// Rotate a Sudoku puzzle 180 degrees
+// Rotate a Sudoku puzzle 180 degrees
 pub fn rotate_180(sudoku: &Sudoku) -> Sudoku {
     let mut new_sudoku = Sudoku::new();
 
@@ -41,7 +41,7 @@ pub fn rotate_180(sudoku: &Sudoku) -> Sudoku {
     new_sudoku
 }
 
-/// Rotate a Sudoku puzzle 270 degrees clockwise (or 90 degrees counter-clockwise)
+// Rotate a Sudoku puzzle 270 degrees clockwise (or 90 degrees counter-clockwise)
 pub fn rotate_270(sudoku: &Sudoku) -> Sudoku {
     let mut new_sudoku = Sudoku::new();
 
@@ -61,7 +61,7 @@ pub fn rotate_270(sudoku: &Sudoku) -> Sudoku {
     new_sudoku
 }
 
-/// Generate all rotational isomorphs (3 total, not including the original)
+// Generate all rotational isomorphs (3 total, not including the original)
 pub fn all_rotations(sudoku: &Sudoku) -> Vec<Sudoku> {
     vec![rotate_90(sudoku), rotate_180(sudoku), rotate_270(sudoku)]
 }

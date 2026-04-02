@@ -12,5 +12,9 @@ serde = { version = "1.0.228", features = ["derive"]}
 thiserror = "2.0.17"
 
 [[bin]]
+name = "generate_graph_isomorphisms"
+path = "src/bin/generate_graph_isomorphisms.rs"
+
+[[bin]]
 name = "rand_ord_experiment"
 path = "src/bin/rand_ord_experiment.rs"

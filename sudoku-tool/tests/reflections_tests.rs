@@ -7,10 +7,10 @@ fn test_reflect_empty_puzzle() {
     let empty = Sudoku::new();
 
     let reflections = [
-        ("vertical", reflect_vertical(&empty)),
-        ("horizontal", reflect_horizontal(&empty)),
-        ("main diagonal", reflect_main_diagonal(&empty)),
-        ("anti-diagonal", reflect_anti_diagonal(&empty)),
+        ("vertical", h_reflect(&empty)),
+        ("horizontal", v_reflect(&empty)),
+        ("main diagonal", d_reflect(&empty)),
+        ("anti-diagonal", dprime_reflect(&empty)),
     ];
 
     for (name, reflected) in reflections.iter() {
@@ -50,7 +50,7 @@ fn test_reflect_vertical_single_cell() {
     let mut sudoku = Sudoku::new();
     sudoku.set_cell(0, 0, 5).unwrap();
 
-    let reflected = reflect_vertical(&sudoku);
+    let reflected = h_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -73,7 +73,7 @@ fn test_reflect_vertical_corner_cells() {
     sudoku.set_cell(8, 0, 3).unwrap(); // bottom-left
     sudoku.set_cell(8, 8, 4).unwrap(); // bottom-right
 
-    let reflected = reflect_vertical(&sudoku);
+    let reflected = h_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -95,7 +95,7 @@ fn test_reflect_horizontal_single_cell() {
     let mut sudoku = Sudoku::new();
     sudoku.set_cell(0, 0, 5).unwrap();
 
-    let reflected = reflect_horizontal(&sudoku);
+    let reflected = v_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -118,7 +118,7 @@ fn test_reflect_horizontal_corner_cells() {
     sudoku.set_cell(8, 0, 3).unwrap(); // bottom-left
     sudoku.set_cell(8, 8, 4).unwrap(); // bottom-right
 
-    let reflected = reflect_horizontal(&sudoku);
+    let reflected = v_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -140,7 +140,7 @@ fn test_reflect_main_diagonal_single_cell() {
     let mut sudoku = Sudoku::new();
     sudoku.set_cell(0, 2, 5).unwrap();
 
-    let reflected = reflect_main_diagonal(&sudoku);
+    let reflected = d_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -163,7 +163,7 @@ fn test_reflect_main_diagonal_corner_cells() {
     sudoku.set_cell(8, 0, 3).unwrap(); // bottom-left
     sudoku.set_cell(8, 8, 4).unwrap(); // bottom-right
 
-    let reflected = reflect_main_diagonal(&sudoku);
+    let reflected = d_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -185,7 +185,7 @@ fn test_reflect_anti_diagonal_single_cell() {
     let mut sudoku = Sudoku::new();
     sudoku.set_cell(0, 2, 5).unwrap();
 
-    let reflected = reflect_anti_diagonal(&sudoku);
+    let reflected = dprime_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);
@@ -209,7 +209,7 @@ fn test_reflect_anti_diagonal_corner_cells() {
     sudoku.set_cell(8, 0, 3).unwrap(); // bottom-left
     sudoku.set_cell(8, 8, 4).unwrap(); // bottom-right
 
-    let reflected = reflect_anti_diagonal(&sudoku);
+    let reflected = dprime_reflect(&sudoku);
 
     // Allow for visual check
     println!("{}", sudoku);

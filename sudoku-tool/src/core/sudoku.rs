@@ -327,7 +327,7 @@ impl Sudoku {
     }
 
     /// Convert Sudoku back to string representation (using '.' for empty cells)
-    pub fn to_string(&self) -> String {
+    pub fn to_string_rep(&self) -> String {
         let mut result = String::with_capacity(81);
 
         for row in 0..9 {

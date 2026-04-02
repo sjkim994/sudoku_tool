@@ -156,7 +156,7 @@ fn test_to_string() {
     let original_string =
         "1..5.37..6.3..8.9......98...1.......8761..........6...........7.8.9.76.47...6.312";
     let puzzle = Sudoku::from_string(original_string).unwrap();
-    let converted_string = puzzle.to_string();
+    let converted_string = puzzle.to_string_rep();
 
     // The converted string should match the original (with dots for empty cells)
     assert_eq!(converted_string.len(), 81);

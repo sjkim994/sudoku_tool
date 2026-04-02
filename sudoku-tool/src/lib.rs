@@ -8,6 +8,7 @@ pub mod core {
         pub mod reflections;
         pub mod relabeling;
         pub mod rotations;
+        pub mod stacks_bands;
     }
     // Add other core modules as needed
 }
