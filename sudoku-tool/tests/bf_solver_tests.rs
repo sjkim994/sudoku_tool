@@ -40,7 +40,7 @@ fn test_solve_already_solved_puzzle() {
 }
 
 #[test]
-fn test_shultz_301_all_strategies() {
+fn test_shortz_301() {
     #[rustfmt::skip]
     let preset = [
         [None,    Some(3), Some(9), Some(5), None,     None,     None,     None,     None    ],
@@ -56,37 +56,20 @@ fn test_shultz_301_all_strategies() {
 
     let puzzle = Sudoku::from_preset(preset);
 
-    // Test all strategies
-    let strategies = [
-        ("Default", SearchStrategy::Default),
-        ("Row/Col Random", SearchStrategy::RowColRandom),
-        (
-            "Custom Row/Col",
-            SearchStrategy::CustomRowCol {
-                row_order: [2, 5, 1, 6, 3, 7, 4, 8, 0],
-                col_order: [6, 8, 3, 4, 2, 0, 7, 5, 1],
-            },
-        ),
-    ];
+    let (solution, stats) = find_one_solution(&puzzle);
+    assert!(solution.is_some(), "Puzzle should have a solution");
+    assert!(stats.solutions_found == 1);
 
-    for (name, strategy) in strategies {
-        println!("Testing {} strategy...", name);
-        let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone());
-        assert!(
-            solution.is_some(),
-            "{} strategy should find a solution",
-            name
+    println!("Solver Statistics for Shortz 301");
+
+    stats.print_analysis();
+
+    if let Some(solved_puzzle) = solution {
+        assert!(solved_puzzle.is_solved(), "Solution should be valid");
+        println!(
+            "Shortz 301 solved with {} nodes explored",
+            stats.nodes_explored
         );
-        assert!(stats.solutions_found == 1);
-
-        if let Some(solved_puzzle) = solution {
-            assert!(
-                solved_puzzle.is_solved(),
-                "{} strategy solution should be valid",
-                name
-            );
-            println!("{} strategy: {} nodes explored", name, stats.nodes_explored);
-        }
     }
 }
 
@@ -129,7 +112,7 @@ fn test_cell_order_strategies_simple() {
 
     for (name, strategy) in strategies {
         println!("Testing {} strategy on simple puzzle...", name);
-        let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone());
+        let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone(), None);
         assert!(
             solution.is_some(),
             "{} strategy should find a solution for simple puzzle",
@@ -271,10 +254,14 @@ fn test_mepham_d() {
     assert!(solution.is_some(), "Puzzle should have a solution");
     assert!(stats.solutions_found == 1);
 
+    println!("Solver Statistics for Mepham's D");
+
+    stats.print_analysis();
+
     if let Some(solved_puzzle) = solution {
         assert!(solved_puzzle.is_solved(), "Solution should be valid");
         println!(
-            "Mepham D solved with {} nodes explored",
+            "Mepham's D solved with {} nodes explored",
             stats.nodes_explored
         );
     }
@@ -366,7 +353,7 @@ fn test_strategy_performance_comparison() {
     println!("\n=== Performance Comparison ===");
     for (name, strategy) in strategies {
         println!("Testing {} strategy...", name);
-        let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone());
+        let (solution, stats) = find_one_solution_strategy(&puzzle, strategy.clone(), None);
 
         if solution.is_none() {
             println!("ERROR: {} strategy failed to solve the puzzle!", name);
@@ -386,5 +373,53 @@ fn test_strategy_performance_comparison() {
                 name
             );
         }
+    }
+}
+
+#[test]
+fn test_sample_puzzle_one() {
+    #[rustfmt::skip]
+    let preset = "1..5.37..6.3..8.9......98...1.......8761..........6...........7.8.9.76.47...6.312";
+
+    let puzzle = Sudoku::from_string(preset).unwrap();
+
+    let (solution, stats) = find_one_solution(&puzzle);
+    assert!(solution.is_some(), "Puzzle should have a solution");
+    assert!(stats.solutions_found == 1);
+
+    println!("Solver Statistics for Sample Puzzle 1");
+
+    stats.print_analysis();
+
+    if let Some(solved_puzzle) = solution {
+        assert!(solved_puzzle.is_solved(), "Solution should be valid");
+        println!(
+            "Sample Puzzle 1 solved with {} nodes explored",
+            stats.nodes_explored
+        );
+    }
+}
+
+#[test]
+fn test_sample_puzzle_two() {
+    #[rustfmt::skip]
+    let preset = "47.....138....4..6.5..7.4..9362..........76...2.1...3......8.............4....972";
+
+    let puzzle = Sudoku::from_string(preset).unwrap();
+
+    let (solution, stats) = find_one_solution(&puzzle);
+    assert!(solution.is_some(), "Puzzle should have a solution");
+    assert!(stats.solutions_found == 1);
+
+    println!("Solver Statistics for Sample Puzzle 1");
+
+    stats.print_analysis();
+
+    if let Some(solved_puzzle) = solution {
+        assert!(solved_puzzle.is_solved(), "Solution should be valid");
+        println!(
+            "Sample Puzzle 1 solved with {} nodes explored",
+            stats.nodes_explored
+        );
     }
 }

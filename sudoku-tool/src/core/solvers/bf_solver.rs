@@ -11,6 +11,7 @@ pub struct SolverStats {
     pub backtracks: usize,
     pub leaves: usize,
     pub tree_width_by_level: [usize; 81],
+    pub timed_out: bool,
 }
 
 impl Default for SolverStats {
@@ -23,6 +24,7 @@ impl Default for SolverStats {
             backtracks: 0,
             leaves: 0,
             tree_width_by_level: [0; 81],
+            timed_out: false,
         }
     }
 }
@@ -31,6 +33,10 @@ impl SolverStats {
     /// Print comprehensive analysis of solver performance and search tree
     pub fn print_analysis(&self) {
         println!("=== Sudoku Search Tree Analysis ===");
+
+        if self.timed_out {
+            println!("*** SOLVER TIMED OUT***");
+        }
 
         let (max_width, max_width_depth) = self.max_tree_width();
         let total_nodes = self.total_nodes_from_tree();
@@ -228,13 +234,25 @@ pub fn generate_cell_order_from_row_col(
 
 // Wrapper functions for easier tests
 pub fn find_one_solution(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
-    find_one_solution_strategy(sudoku, SearchStrategy::Default)
+    find_one_solution_strategy(sudoku, SearchStrategy::Default, None)
 }
 pub fn find_one_solution_rand_rowcol_order(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
-    find_one_solution_strategy(sudoku, SearchStrategy::RowColRandom)
+    find_one_solution_strategy(sudoku, SearchStrategy::RowColRandom, None)
+}
+pub fn find_one_solution_rand_rowcol_order_timeout(
+    sudoku: &Sudoku,
+    timeout_ms: u64,
+) -> (Option<Sudoku>, SolverStats) {
+    find_one_solution_strategy(sudoku, SearchStrategy::RowColRandom, Some(timeout_ms))
 }
 pub fn find_one_solution_rand_cell_order(sudoku: &Sudoku) -> (Option<Sudoku>, SolverStats) {
-    find_one_solution_strategy(sudoku, SearchStrategy::CellRandom)
+    find_one_solution_strategy(sudoku, SearchStrategy::CellRandom, None)
+}
+pub fn find_one_solution_rand_cell_order_timeout(
+    sudoku: &Sudoku,
+    timeout_ms: u64,
+) -> (Option<Sudoku>, SolverStats) {
+    find_one_solution_strategy(sudoku, SearchStrategy::CellRandom, Some(timeout_ms))
 }
 pub fn find_one_solution_custom_rowcol_order(
     sudoku: &Sudoku,
@@ -247,6 +265,7 @@ pub fn find_one_solution_custom_rowcol_order(
             row_order,
             col_order,
         },
+        None,
     )
 }
 pub fn find_one_solution_custom_cell_order(
@@ -258,12 +277,14 @@ pub fn find_one_solution_custom_cell_order(
         SearchStrategy::CustomCell {
             cell_order: cell_order.to_vec(),
         },
+        None,
     )
 }
 
 pub fn find_one_solution_strategy(
     sudoku: &Sudoku,
     strategy: SearchStrategy,
+    timeout_ms: Option<u64>,
 ) -> (Option<Sudoku>, SolverStats) {
     // Initialize stat recorders and solutions vec
     let start_time = Instant::now();
@@ -319,6 +340,8 @@ pub fn find_one_solution_strategy(
         &mut stats,
         &mut solutions,
         false,
+        start_time,
+        timeout_ms,
     );
 
     let solution = solutions.into_iter().next();
@@ -397,7 +420,17 @@ fn solve_recursive_cell_order(
     stats: &mut SolverStats,
     solutions: &mut Vec<Sudoku>,
     find_all: bool,
+    start_time: Instant,
+    timeout_ms: Option<u64>,
 ) {
+    // Check for timeout (every 1000 nodes to avoid overhead)
+    if let Some(timeout) = timeout_ms {
+        if stats.nodes_explored % 1000 == 0 && start_time.elapsed().as_millis() > timeout as u128 {
+            stats.timed_out = true;
+            return;
+        }
+    }
+
     // Find next empty cell
     let mut current_idx = cell_idx;
     while current_idx < 81 {
@@ -454,10 +487,16 @@ fn solve_recursive_cell_order(
                 stats,
                 solutions,
                 find_all,
+                start_time,
+                timeout_ms,
             );
 
             // If we found at least one solution and we're not finding all, early return
             if !solutions.is_empty() && !find_all {
+                return;
+            }
+
+            if stats.timed_out {
                 return;
             }
 

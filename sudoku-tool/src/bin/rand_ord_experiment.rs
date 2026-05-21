@@ -6,7 +6,8 @@ use std::path::PathBuf;
 
 use sudoku_tool::core::solvers::bf_solver::{
     SolverStats, find_one_solution, find_one_solution_rand_cell_order,
-    find_one_solution_rand_rowcol_order,
+    find_one_solution_rand_cell_order_timeout, find_one_solution_rand_rowcol_order,
+    find_one_solution_rand_rowcol_order_timeout,
 };
 use sudoku_tool::core::sudoku::Sudoku;
 
@@ -31,6 +32,8 @@ use sudoku_tool::core::sudoku::Sudoku;
 //   -s, --seed <SEED>           Random seed for reproducible sampling
 //   -p, --progress <PROGRESS>
 //                           Show progress every N puzzles [default: 10]
+//   -t, --timeout <TIMEOUT>
+//                           Timeout in milliseconds per solver run (0 = no timeout) [default: 0]
 //   -h, --help              Print help information
 //
 // EXAMPLE COMMANDS:
@@ -75,6 +78,10 @@ struct Cli {
     /// Show progress every N puzzles
     #[arg(short, long, default_value_t = 10)]
     progress: usize,
+
+    // Timeout in milliseconds per solver run (0 = no timeout)
+    #[arg(short, long, default_value_t = 0)]
+    timeout: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,6 +112,7 @@ struct RandomRunStats {
     is_solved: bool,
     leaves: usize,
     backtracks: usize,
+    timed_out: bool,
 }
 
 fn run_random_ordering_experiment(cli: &Cli) -> Result<(), Box<dyn Error>> {
@@ -125,10 +133,12 @@ fn run_random_ordering_experiment(cli: &Cli) -> Result<(), Box<dyn Error>> {
         is_solved: false,
         leaves: 0,
         backtracks: 0,
+        timed_out: false,
     })?;
 
     let mut processed_puzzles = 0;
     let mut total_runs = 0;
+    let mut timed_out_runs = 0;
 
     // Initialize random number generator for puzzle sampling
     let mut rng = cli.seed.map(|seed| {
@@ -154,6 +164,13 @@ fn run_random_ordering_experiment(cli: &Cli) -> Result<(), Box<dyn Error>> {
         sampled_puzzles.len(),
         cli.runs_per_puzzle
     );
+
+    if cli.timeout > 0 {
+        println!("Timeout: {} ms per solver run", cli.timeout);
+    } else {
+        println!("No timeout (unlimited)");
+    }
+    println!();
 
     for (puzzle_idx, puzzle_record) in sampled_puzzles.iter().enumerate() {
         processed_puzzles += 1;
@@ -195,14 +212,18 @@ fn run_random_ordering_experiment(cli: &Cli) -> Result<(), Box<dyn Error>> {
             is_solved: baseline_solution.is_some(),
             leaves: baseline_stats.leaves,
             backtracks: baseline_stats.backtracks,
+            timed_out: baseline_stats.timed_out,
         })?;
         total_runs += 1;
-
+        if baseline_stats.timed_out {
+            timed_out_runs += 1;
+        }
         // Run multiple random orderings
         for run in 1..cli.runs_per_puzzle {
             total_runs += 1;
 
-            let (solution, stats) = find_one_solution_rand_rowcol_order(&puzzle);
+            // Either rand_rowcol_order or rand_cell_order
+            let (solution, stats) = find_one_solution_rand_cell_order_timeout(&puzzle, cli.timeout);
 
             // Write results for each run
             wtr.serialize(RandomRunStats {
@@ -218,6 +239,7 @@ fn run_random_ordering_experiment(cli: &Cli) -> Result<(), Box<dyn Error>> {
                 is_solved: solution.is_some(),
                 leaves: stats.leaves,
                 backtracks: stats.backtracks,
+                timed_out: stats.timed_out,
             })?;
 
             // Flush periodically to avoid data loss
@@ -228,8 +250,11 @@ fn run_random_ordering_experiment(cli: &Cli) -> Result<(), Box<dyn Error>> {
     }
 
     println!(
-        "Completed! Processed {} puzzles, {} total runs",
-        processed_puzzles, total_runs
+        "Completed! Processed {} puzzles, {} total runs, {} timed out runs",
+        processed_puzzles,
+        total_runs,
+        timed_out_runs,
+        // (timed_out_runs as f64 / total_runs as f64) * 100.0
     );
 
     Ok(())
